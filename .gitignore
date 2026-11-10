@@ -1,0 +1,23 @@
+# data and artefacts (Kaggle data is downloaded, never committed)
+data/
+oof/
+/models/
+*.joblib
+*.parquet
+
+# course material that isn't ours to publish
+MLDA workshop kickoff*.pdf
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+
+# latex
+*.aux
+*.log
+*.out
+
+.DS_Store

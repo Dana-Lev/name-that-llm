@@ -1,0 +1,142 @@
+\documentclass[11pt]{article}
+
+\usepackage[a4paper,margin=2cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{titlesec}
+
+\titlespacing*{\section}{0pt}{8pt}{2pt}
+
+\setlist{nosep,leftmargin=*}
+\setlength{\parskip}{4pt}
+\setlength{\parindent}{0pt}
+
+\newcommand{\todo}[1]{\textbf{[#1]}}
+
+\begin{document}
+
+\begin{center}
+  {\Large\bfseries Project Proposal: Name That LLM}\\[4pt]
+  Workshop in Machine Learning and Data Analysis (0368-3548), Fall 2026--27\\[2pt]
+  Track: \textbf{competitive} \quad
+  Competition: \url{https://www.kaggle.com/competitions/name-that-llm}
+\end{center}
+
+\section*{Team}
+\begin{tabular}{@{}ll@{}}
+  \todo{Full name 1} & \todo{email 1} \\
+  \todo{Full name 2} & \todo{email 2} \\
+  \todo{Full name 3} & \todo{email 3} \\
+\end{tabular}
+
+\section*{The challenge}
+Name That LLM is an active Kaggle Featured Code Competition with a \$50{,}000 prize pool
+(\$5{,}000 for each of places 1--10). The task is authorship attribution: given a short passage,
+predict which of 18 frontier language models wrote it. The 18 models come from six labs:
+OpenAI (5 models), Anthropic (5), Google (4), ZAI (2), Qwen (1) and Moonshot AI (1).
+Every passage is an authentic, self-contained model response to a prompt on philosophy,
+physics, mathematics, biology, computer science or creative prose.
+
+Three properties make the task hard:
+\begin{itemize}
+  \item \textbf{Unseen prompts.} Test passages answer prompts that do not appear in the
+        training set, so the classifier cannot rely on topic.
+  \item \textbf{Short, variable length.} Passages are 40--250 words long, and the organisers
+        chose lengths so that character counts are not a usable shortcut.
+  \item \textbf{Sibling models.} Several models share a lab, training data and post-training
+        recipe (e.g.\ five OpenAI models), so the differences between them are subtle.
+\end{itemize}
+
+\textbf{Deadlines.} Entry and team merger: 6 January 2027. Final submission: 13 January 2027.
+Both fall before 11 April 2027, as the competitive track requires.
+
+\section*{The data}
+\begin{itemize}
+  \item \texttt{train.csv}: 2{,}699 labelled passages written for 150 prompts, with columns
+        \texttt{id}, \texttt{prompt\_id}, \texttt{text} and \texttt{model}. That is roughly
+        150 passages per class.
+  \item \texttt{test.csv}: about 4{,}000 hidden passages (\texttt{id}, \texttt{text}), visible only
+        when the notebook is re-run for scoring. The public leaderboard uses about 40\% of
+        them and the private leaderboard the other 60\%; the class mix differs between the two.
+  \item Total size of the provided files: 2.14\,MB.
+\end{itemize}
+
+\textbf{Metric.} Balanced accuracy, the mean per-class recall over the $K=18$ models:
+\[
+  \text{BA} = \frac{1}{K}\sum_{k=1}^{K}
+  \frac{\left|\{i : y_i = k \wedge \hat{y}_i = k\}\right|}{\left|\{i : y_i = k\}\right|}.
+\]
+Classes are not equally frequent in the test set, so every model counts the same regardless of
+how many passages it has.
+
+\textbf{Submission rules.} Predictions are produced by a Kaggle notebook that runs in at most
+9 hours (CPU or GPU) with internet access disabled. Freely and publicly available external
+data and pre-trained models are allowed.
+
+\section*{What would count as success}
+\begin{enumerate}
+  \item A reproducible baseline and a validation scheme we trust: cross-validation grouped by
+        \texttt{prompt\_id}, so that validation prompts are unseen, as they are in the test set.
+        Success means the cross-validation score tracks the public leaderboard.
+  \item A final model that clearly beats our baseline on the private leaderboard. As of
+        25 October 2026 the best public score is 0.703 and a score of about 0.64 ranks in the
+        top 50 of roughly 3{,}100 teams. We aim for the top 10\% (a bronze medal) and treat a
+        higher placement as a stretch goal.
+  \item An analysis of what the classifier learns: which models it confuses (we expect
+        confusion within a lab), which features separate labs and which separate sibling
+        models, and how accuracy changes with passage length.
+\end{enumerate}
+
+\section*{Expected compute and storage}
+\begin{itemize}
+  \item \textbf{Storage.} The data is 2\,MB. The bulk is model weights: a DeBERTa-v3-large
+        checkpoint is under 2\,GB, and one open 7--8B LLM for perplexity features is about
+        15\,GB in 16-bit precision (about 5\,GB in 4-bit). We expect to stay under 25\,GB, within
+        the 30\,GB per-team limit.
+  \item \textbf{Compute.} Classical models train in seconds on a CPU. Fine-tuning an encoder on
+        2{,}700 short passages takes minutes on a single 16\,GB GPU, and we can run it on
+        Kaggle's free GPU quota. The school GPUs are needed mainly for extracting features from
+        a 7--8B LLM and for running many cross-validation folds.
+  \item \textbf{Inference.} Classifying about 4{,}000 short passages fits easily in the 9-hour
+        notebook limit, even with an LLM-based feature extractor.
+\end{itemize}
+
+\section*{Initial ideas}
+\begin{enumerate}
+  \item \textbf{Baseline.} TF-IDF over word and character n-grams with a linear classifier
+        (logistic regression or linear SVM), with class weights to match the balanced metric.
+  \item \textbf{Stylometric features.} Punctuation habits (em-dashes, semicolons, colons),
+        sentence-length statistics, paragraph structure, list and markdown use, and
+        characteristic phrases. These are easy to interpret and support the error analysis.
+  \item \textbf{Fine-tuned encoders.} DeBERTa-v3 or a similar encoder fine-tuned for 18-way
+        classification, with prompt-grouped folds and an ensemble across folds.
+  \item \textbf{Hierarchical classification.} Predict the lab first (6 classes, which should be
+        easier), then the model within the lab, and compare against flat 18-way classification.
+  \item \textbf{Features from open LLMs.} Per-token log-probabilities and perplexity of each
+        passage under one or more open LLMs, and hidden-state embeddings as input to a light
+        classifier. Models from the same family may score each other's text differently.
+  \item \textbf{Ensembling and calibration.} Combine the models above and adjust class
+        thresholds for balanced accuracy, since the class mix in the test set differs from
+        the training set.
+\end{enumerate}
+
+\section*{Timeline and risks}
+We plan a working baseline and grouped cross-validation by mid-November, encoder and LLM
+feature experiments through December, and the final ensemble before the 13 January deadline.
+The main risks:
+\begin{itemize}
+  \item \textbf{Short schedule.} The final Kaggle deadline is the same day as the midpoint
+        review. We will confirm with the staff when the report is due on the competitive track.
+        If we miss the Kaggle deadline we will move to the non-competitive track.
+  \item \textbf{Small data.} With about 150 examples per class, validation scores are noisy.
+        We will rely on grouped cross-validation rather than the public leaderboard.
+  \item \textbf{Distribution shift.} The test set has new prompts and a different class mix,
+        which can make the public leaderboard misleading.
+\end{itemize}
+
+\end{document}

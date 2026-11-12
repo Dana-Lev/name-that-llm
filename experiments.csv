@@ -1,2 +1,8 @@
 date,owner,name,git_commit,cv_mean,cv_std,public_lb,notes
 2026-11-12,Dana,tfidf_logreg,712c971,0.3426,0.0132,,C=10.0
+2026-11-12,Dana,tfidf_logreg,e5221e1,0.3426,0.0132,,
+2026-11-12,Dana,tfidf_logreg+assign,e5221e1,0.4501,0.0213,,one model per clustered prompt
+2026-11-12,Dana,style_logreg,e5221e1,0.2819,0.0294,,
+2026-11-12,Dana,style_logreg+assign,e5221e1,0.3337,0.0153,,one model per clustered prompt
+2026-11-12,Dana,tfidf_style_blend,e5221e1,0.3841,0.0200,,
+2026-11-12,Dana,tfidf_style_blend+assign,e5221e1,0.4963,0.0204,,one model per clustered prompt

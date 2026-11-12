@@ -73,3 +73,29 @@ def test_confusion_tables():
     assert labs.loc["Google", "OpenAI"] == 1
     # two mistakes: gpt-5.5 -> gpt-5.6-luna (same lab) and gemini -> gpt-5.5 (other lab)
     assert within_lab_error_share(y_true, y_pred) == 0.5
+
+
+def test_make_submission(tmp_path):
+    from src.predict import make_submission
+
+    train = synthetic_train(n_prompts=10)
+    train.drop(columns="label").to_csv(tmp_path / "train.csv", index=False)
+    test = train.tail(18)[["id", "text"]]
+    test.to_csv(tmp_path / "test.csv", index=False)
+
+    out = tmp_path / "submission.parquet"
+    submission = make_submission(tmp_path, out)
+
+    written = pd.read_parquet(out)
+    assert list(written.columns) == ["id", "model"]
+    assert list(written["id"]) == list(test["id"])
+    assert set(written["model"]) <= set(LABELS)
+    # the test rows are training rows, so the model should get them right
+    assert (submission["model"].to_numpy() == train.tail(18)["model"].to_numpy()).mean() > 0.9
+
+
+def test_notebook_is_up_to_date():
+    """The committed notebook must match src/; rebuild it after changing src/."""
+    from src.build_notebook import NOTEBOOK, render
+
+    assert NOTEBOOK.read_text() == render(), "run: python -m src.build_notebook"

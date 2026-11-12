@@ -31,6 +31,19 @@ The baseline is TF-IDF over word and character n-grams with logistic regression.
 balanced accuracy per fold, saves out-of-fold probabilities to `oof/`, and appends a row to
 `experiments.csv`.
 
+## Submit
+
+Kaggle runs submissions with internet off, so the submission notebook carries a copy of the code it
+needs. It is generated from `src/`; never edit it by hand.
+
+```bash
+python -m src.build_notebook                        # writes notebooks/submission_tfidf_logreg.ipynb
+```
+
+Upload the notebook to the competition on Kaggle, attach the competition data, keep internet off,
+save a version and submit it. The notebook fits the baseline on all of `train.csv` and writes
+`submission.parquet`. `python -m src.predict --data-dir data` does the same locally.
+
 ## Validation
 
 Every experiment uses the same 5 folds from `src.data.make_folds`. All passages that answer one
@@ -46,9 +59,11 @@ src/
   features/tfidf.py  word and character n-gram features
   models/linear.py   TF-IDF + logistic regression
   train_baseline.py  cross-validation entry point
+  predict.py         fit on all data, write submission.parquet
+  build_notebook.py  generates the Kaggle submission notebook
 tests/               pipeline test on synthetic data
 configs/             one file per experiment (to come)
-notebooks/           EDA and the Kaggle submission notebook (to come)
+notebooks/           the generated Kaggle submission notebook; EDA (to come)
 docs/                proposal
 experiments.csv      one row per experiment
 ```

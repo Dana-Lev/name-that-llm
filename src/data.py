@@ -1,5 +1,6 @@
 """Loading the competition data and building the cross-validation folds."""
 
+import os
 from pathlib import Path
 
 import numpy as np
@@ -33,6 +34,20 @@ LAB_OF = {model: lab for lab, models in LABS.items() for model in models}
 
 N_SPLITS = 5
 SEED = 42
+
+
+def find_data_dir():
+    """The folder with train.csv: $NTL_DATA_DIR, Kaggle's input folder, or ./data."""
+    candidates = [
+        os.environ.get("NTL_DATA_DIR"),
+        "/kaggle/input/competitions/name-that-llm",
+        "/kaggle/input/name-that-llm",
+        "data",
+    ]
+    for candidate in candidates:
+        if candidate and (Path(candidate) / "train.csv").exists():
+            return Path(candidate)
+    raise FileNotFoundError("train.csv not found; set NTL_DATA_DIR or put the data in ./data")
 
 
 def load_train(data_dir="data"):

@@ -1,1 +1,2 @@
 date,owner,name,git_commit,cv_mean,cv_std,public_lb,notes
+2026-11-12,Dana,tfidf_logreg,712c971,0.3426,0.0132,,C=10.0

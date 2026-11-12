@@ -21,3 +21,6 @@ __pycache__/
 *.out
 
 .DS_Store
+
+# local tool state
+.serena/

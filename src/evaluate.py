@@ -28,7 +28,8 @@ def model_confusion(y_true, y_pred):
 def lab_confusion(y_true, y_pred):
     """The same table collapsed to the 6 labs."""
     table = model_confusion(y_true, y_pred)
-    labs = [LAB_OF[m] for m in LABELS]
+    # An array, not a list: pandas reads a list of strings as column names.
+    labs = np.array([LAB_OF[m] for m in LABELS])
     return table.groupby(labs, sort=False).sum().T.groupby(labs, sort=False).sum().T
 
 

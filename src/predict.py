@@ -1,8 +1,8 @@
-"""Fit the baseline on all of train.csv and write submission.parquet.
+"""Fit a model on all of train.csv and write submission.parquet.
 
-    python -m src.predict --data-dir data
+    python -m src.predict --model tfidf_style_blend --data-dir data
 
-This is what the Kaggle submission notebook runs.
+This is what the Kaggle submission notebooks run.
 """
 
 import argparse
@@ -10,7 +10,8 @@ import argparse
 import pandas as pd
 
 from src.data import LABELS, find_data_dir, load_test, load_train
-from src.models.linear import build_tfidf_logreg
+from src.models import MODELS
+from src.prompts import assign_within_groups, cluster_prompts
 
 
 def check_submission(submission, test):
@@ -26,13 +27,22 @@ def check_submission(submission, test):
         raise ValueError(f"labels outside the 18 valid ones: {sorted(unknown)}")
 
 
-def make_submission(data_dir=None, out="submission.parquet", build_model=build_tfidf_logreg):
+def make_submission(model="tfidf_logreg", assign=False, data_dir=None, out="submission.parquet"):
+    """With assign=True, group the test passages by prompt and let no model
+    repeat inside a group (see src/prompts.py)."""
     data_dir = find_data_dir() if data_dir is None else data_dir
     train, test = load_train(data_dir), load_test(data_dir)
 
-    model = build_model()
-    model.fit(train["text"], train["label"])
-    predicted = model.predict(test["text"])
+    fitted = MODELS[model]().fit(train["text"], train["label"])
+    # Columns of predict_proba follow fitted.classes_, which are label ids.
+    probs = fitted.predict_proba(test["text"])
+    if assign:
+        groups = cluster_prompts(test["text"])
+        columns = assign_within_groups(probs, groups)
+        print(f"grouped {len(test)} passages into {groups.max() + 1} prompts")
+    else:
+        columns = probs.argmax(axis=1)
+    predicted = fitted.classes_[columns]
 
     submission = pd.DataFrame({"id": test["id"], "model": [LABELS[i] for i in predicted]})
     check_submission(submission, test)
@@ -43,7 +53,9 @@ def make_submission(data_dir=None, out="submission.parquet", build_model=build_t
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--model", default="tfidf_logreg", choices=sorted(MODELS))
+    parser.add_argument("--assign", action="store_true")
     parser.add_argument("--data-dir", default=None)
     parser.add_argument("--out", default="submission.parquet")
     args = parser.parse_args()
-    make_submission(args.data_dir, args.out)
+    make_submission(args.model, args.assign, args.data_dir, args.out)

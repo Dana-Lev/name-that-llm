@@ -3,3 +3,7 @@ pandas>=2.2
 scikit-learn>=1.5
 pyarrow>=17
 pytest>=8
+# only for the fine-tuned models (src/models/transformer.py)
+torch>=2.4
+transformers>=4.44
+sentencepiece>=0.2

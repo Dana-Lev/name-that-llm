@@ -22,6 +22,7 @@ SOURCES = [
     "src/features/stylometry.py",
     "src/models/linear.py",
     "src/models/blend.py",
+    "src/models/transformer.py",
     "src/models/__init__.py",
     "src/prompts.py",
     "src/predict.py",
@@ -40,6 +41,11 @@ NOTEBOOKS = {
     "submission_blend_assign.ipynb": (
         "TF-IDF + style features, one model per prompt",
         {"model": "tfidf_style_blend", "assign": True},
+    ),
+    # Needs a GPU session and deberta-v3-base attached as an input.
+    "submission_deberta_blend.ipynb": (
+        "TF-IDF + style features + fine-tuned DeBERTa",
+        {"model": "tfidf_style_deberta_blend", "assign": False},
     ),
 }
 

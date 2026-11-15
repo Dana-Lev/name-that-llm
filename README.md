@@ -39,13 +39,19 @@ fold, saves out-of-fold probabilities to `oof/`, and appends rows to `experiment
 4. **One model per prompt.** In `train.csv` no prompt has two passages from the same model. We
    group the test passages by topic to recover the prompts, then choose the labelling of each group
    in which no model repeats (`src/prompts.py`). This assumes the hidden test set is built like the
-   training set, which only the leaderboard can confirm.
+   training set. The leaderboard says it is not: this step added nothing there (0.355 with it,
+   0.356 without), most likely because the test set has few passages per prompt.
+5. **Fine-tuned DeBERTa.** The pretrained `microsoft/deberta-v3-base` encoder with one linear layer
+   on top, all weights trained for 6 epochs (`src/models/transformer.py`). Added to the blend at
+   half weight.
 
-| Model | Plain | With one model per prompt |
-|---|---|---|
-| Style features only | 0.282 | 0.334 |
-| TF-IDF only | 0.343 | 0.450 |
-| Blend of both | 0.384 | 0.496 |
+| Model | Plain | With one model per prompt | Public leaderboard (plain) |
+|---|---|---|---|
+| Style features only | 0.282 | 0.334 | |
+| DeBERTa only | 0.341 | 0.473 | |
+| TF-IDF only | 0.343 | 0.450 | 0.351 |
+| TF-IDF + style | 0.384 | 0.496 | 0.356 |
+| TF-IDF + style + DeBERTa | 0.418 | | |
 
 Balanced accuracy, mean of 5 prompt-grouped folds; the standard deviation across folds is 0.01–0.03.
 Random guessing scores 0.056.
@@ -64,6 +70,7 @@ python -m src.build_notebook                        # rewrites the notebooks in 
 | `submission_tfidf_logreg.ipynb` | TF-IDF model |
 | `submission_blend.ipynb` | Blend |
 | `submission_blend_assign.ipynb` | Blend with one model per prompt |
+| `submission_deberta_blend.ipynb` | Blend with fine-tuned DeBERTa. Needs a GPU session and `deberta-v3-base` attached as an input |
 
 Upload a notebook to the competition on Kaggle, attach the competition data, keep internet off,
 save a version and submit it. `python -m src.predict --model tfidf_style_blend --assign` does the

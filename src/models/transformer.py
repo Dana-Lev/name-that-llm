@@ -27,14 +27,34 @@ def find_pretrained(name=DEFAULT_MODEL):
     override = os.environ.get("NTL_PRETRAINED_DIR")
     if override:
         return override
-    short = name.split("/")[-1]
     kaggle_input = Path("/kaggle/input")
     if kaggle_input.exists():
-        for config in sorted(kaggle_input.rglob("config.json")):
-            if short in str(config.parent):
-                return str(config.parent)
-        raise FileNotFoundError(f"attach {short} as a notebook input; nothing like it under {kaggle_input}")
+        return find_weights_folder(kaggle_input, name)
     return name
+
+
+def _squash(text):
+    """Lower-case letters and digits only, so 'DeBERTa-v3-base' matches 'debertav3base'."""
+    return "".join(ch for ch in text.lower() if ch.isalnum())
+
+
+def find_weights_folder(root, name=DEFAULT_MODEL):
+    """The folder under `root` that holds the pretrained model `name`.
+
+    It must have a config.json next to a weights file, and its path must
+    contain the model's short name (ignoring case and punctuation). An input
+    that is merely called deberta-v3-base but has no weights doesn't count.
+    """
+    short = name.split("/")[-1]
+    for config in sorted(Path(root).rglob("config.json")):
+        folder = config.parent
+        has_weights = any((folder / f).exists() for f in ("model.safetensors", "pytorch_model.bin"))
+        if has_weights and _squash(short) in _squash(str(folder)):
+            return str(folder)
+    raise FileNotFoundError(
+        f"no pretrained {short} weights under {root}: attach an input that contains "
+        "config.json together with pytorch_model.bin or model.safetensors"
+    )
 
 
 def pick_device():

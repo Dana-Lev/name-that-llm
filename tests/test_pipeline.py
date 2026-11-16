@@ -2,6 +2,7 @@
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from src.data import LABEL_TO_ID, LABELS, make_folds
 from src.evaluate import (
@@ -194,3 +195,20 @@ def test_notebooks_are_up_to_date():
         assert (ROOT / "notebooks" / name).read_text() == render(name), (
             "run: python -m src.build_notebook"
         )
+
+
+def test_find_weights_folder_needs_real_weights(tmp_path):
+    """An input named like the model but without weights must not be picked."""
+    from src.models.transformer import find_weights_folder
+
+    fake = tmp_path / "DeBERTa-v3-base"
+    fake.mkdir()
+    (fake / "submission.csv").write_text("id,model\n")
+    with pytest.raises(FileNotFoundError):
+        find_weights_folder(tmp_path)
+
+    real = tmp_path / "datasets" / "someone" / "debertav3base"
+    real.mkdir(parents=True)
+    (real / "config.json").write_text("{}")
+    (real / "pytorch_model.bin").write_bytes(b"")
+    assert find_weights_folder(tmp_path) == str(real)

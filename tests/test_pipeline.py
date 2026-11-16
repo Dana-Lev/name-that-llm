@@ -189,9 +189,9 @@ def test_cluster_prompts_groups_passages_by_topic():
 
 def test_notebooks_are_up_to_date():
     """The committed notebooks must match src/; rebuild them after changing src/."""
-    from src.build_notebook import NOTEBOOKS, ROOT, render
+    from src.build_notebook import EXPERIMENTS, NOTEBOOKS, ROOT, render
 
-    for name in NOTEBOOKS:
+    for name in [*NOTEBOOKS, *EXPERIMENTS]:
         assert (ROOT / "notebooks" / name).read_text() == render(name), (
             "run: python -m src.build_notebook"
         )
@@ -212,3 +212,40 @@ def test_find_weights_folder_needs_real_weights(tmp_path):
     (real / "config.json").write_text("{}")
     (real / "pytorch_model.bin").write_bytes(b"")
     assert find_weights_folder(tmp_path) == str(real)
+
+
+def test_find_llm_picks_a_causal_model_with_weights(tmp_path):
+    from src.features.llm import find_llm
+
+    encoder = tmp_path / "a-encoder"
+    encoder.mkdir()
+    (encoder / "config.json").write_text('{"architectures": ["DebertaV2Model"]}')
+    (encoder / "model.safetensors").write_bytes(b"")
+    with pytest.raises(FileNotFoundError):
+        find_llm(tmp_path)
+
+    llm = tmp_path / "qwen-3" / "transformers" / "1.7b" / "1"
+    llm.mkdir(parents=True)
+    (llm / "config.json").write_text('{"architectures": ["Qwen3ForCausalLM"]}')
+    (llm / "model-00001-of-00002.safetensors").write_bytes(b"")
+    assert find_llm(tmp_path) == str(llm)
+
+
+def test_llm_experiment_runs_on_fake_features(tmp_path, monkeypatch):
+    """The experiment's bookkeeping, with random numbers in place of the language model."""
+    import src.llm_experiment as experiment
+
+    df = synthetic_train(n_prompts=10)
+    rng = np.random.default_rng(0)
+    signal = np.eye(len(LABELS))[df["label"]] + 0.1 * rng.normal(size=(len(df), len(LABELS)))
+    fake = {"L1": signal.astype(np.float32), "stats": rng.normal(size=(len(df), 14)).astype(np.float32)}
+    monkeypatch.setattr(experiment, "load_train", lambda _: df)
+    monkeypatch.setattr(experiment, "find_data_dir", lambda: "unused")
+    monkeypatch.setattr(experiment, "find_llm", lambda: "fake-llm")
+    monkeypatch.setattr(experiment, "extract", lambda texts, source: fake)
+
+    table = experiment.main(tmp_path)
+    best = table.groupby("features")["cv_mean"].max()
+    assert best["L1"] > 0.9 and best["stats"] < 0.5
+    assert np.load(tmp_path / "oof_llm_all_layers_stats.npy").shape == (len(df), len(LABELS))
+    assert (tmp_path / "llm_features.npz").exists()

@@ -51,7 +51,7 @@ fold, saves out-of-fold probabilities to `oof/`, and appends rows to `experiment
 | DeBERTa only | 0.341 | 0.473 | |
 | TF-IDF only | 0.343 | 0.450 | 0.351 |
 | TF-IDF + style | 0.384 | 0.496 | 0.356 |
-| TF-IDF + style + DeBERTa | 0.418 | | |
+| TF-IDF + style + DeBERTa | 0.418 | | 0.391 |
 
 Balanced accuracy, mean of 5 prompt-grouped folds; the standard deviation across folds is 0.01–0.03.
 Random guessing scores 0.056.

@@ -8,4 +8,4 @@ date,owner,name,git_commit,cv_mean,cv_std,public_lb,notes
 2026-11-12,Dana,tfidf_style_blend+assign,e5221e1,0.4963,0.0204,0.355,one model per clustered prompt
 2026-11-15,Dana,deberta_base,e09e83b,0.3405,0.0188,,"6 epochs, lr 3e-5, mean pooling"
 2026-11-15,Dana,deberta_base+assign,e09e83b,0.4727,0.0172,,one model per clustered prompt
-2026-11-15,Dana,tfidf_style_deberta_blend,e09e83b,0.4180,0.0236,,tfidf_logreg=1 style_logreg=0.5 deberta_base=0.5
+2026-11-15,Dana,tfidf_style_deberta_blend,e09e83b,0.4180,0.0236,0.391,tfidf_logreg=1 style_logreg=0.5 deberta_base=0.5

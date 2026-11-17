@@ -44,6 +44,10 @@ fold, saves out-of-fold probabilities to `oof/`, and appends rows to `experiment
 5. **Fine-tuned DeBERTa.** The pretrained `microsoft/deberta-v3-base` encoder with one linear layer
    on top, all weights trained for 6 epochs (`src/models/transformer.py`). Added to the blend at
    half weight.
+6. **Features from a frozen language model.** Each passage is run through Qwen 3 4B without
+   training it; the hidden vectors of an early layer, averaged over the passage, go into logistic
+   regression (`src/features/llm.py`). The features were extracted on Kaggle's GPU by
+   `notebooks/experiment_llm_features.ipynb`. Added to the blend at half weight.
 
 | Model | Plain | With one model per prompt | Public leaderboard (plain) |
 |---|---|---|---|
@@ -52,6 +56,8 @@ fold, saves out-of-fold probabilities to `oof/`, and appends rows to `experiment
 | TF-IDF only | 0.343 | 0.450 | 0.351 |
 | TF-IDF + style | 0.384 | 0.496 | 0.356 |
 | TF-IDF + style + DeBERTa | 0.418 | | 0.391 |
+| Qwen 3 4B features only | 0.379 | | |
+| TF-IDF + style + DeBERTa + Qwen features | 0.447 | | |
 
 Balanced accuracy, mean of 5 prompt-grouped folds; the standard deviation across folds is 0.01–0.03.
 Random guessing scores 0.056.
@@ -70,6 +76,7 @@ python -m src.build_notebook                        # rewrites the notebooks in 
 | `submission_tfidf_logreg.ipynb` | TF-IDF model |
 | `submission_blend.ipynb` | Blend |
 | `submission_blend_assign.ipynb` | Blend with one model per prompt |
+| `submission_full_blend.ipynb` | All four models. Needs a GPU session, `deberta-v3-base` and Qwen 3 4B attached |
 | `submission_deberta_blend.ipynb` | Blend with fine-tuned DeBERTa. Needs a GPU session and `deberta-v3-base` attached as an input |
 
 Upload a notebook to the competition on Kaggle, attach the competition data, keep internet off,

@@ -71,8 +71,11 @@ def pick_layers(n_layers):
     return sorted({n_layers // 4, n_layers // 2, 3 * n_layers // 4, n_layers})
 
 
-def extract(texts, source=None, batch_size=8, max_length=512, verbose=True):
-    """Return {"stats": (n, 14), "L<k>": (n, hidden_size), ...} for the passages."""
+def extract(texts, source=None, batch_size=8, max_length=512, verbose=True, stats=True):
+    """Return {"stats": (n, 14), "L<k>": (n, hidden_size), ...} for the passages.
+
+    stats=False skips the predictability numbers, which are the slow part.
+    """
     import torch
 
     texts = list(texts)
@@ -102,7 +105,7 @@ def extract(texts, source=None, batch_size=8, max_length=512, verbose=True):
             # over the whole vocabulary (150k words per token) for a full batch
             # don't fit in a 16 GB GPU.
             lengths = mask.sum(1).tolist()
-            for j, i in enumerate(rows):
+            for j, i in enumerate(rows if stats else []):
                 n = int(lengths[j])
                 if n < 2:  # a one-token passage has nothing to predict
                     continue
@@ -121,3 +124,14 @@ def extract(texts, source=None, batch_size=8, max_length=512, verbose=True):
             if verbose and (start // batch_size) % 50 == 0:
                 print(f"llm features: {start}/{len(texts)} passages", flush=True)
     return features
+
+
+def early_layer_features(texts):
+    """Averaged hidden vectors of the layer a quarter of the way up the model.
+
+    In cross-validation this early layer named the model better than the
+    middle or last layers (Qwen 3 4B: 0.379 against 0.336 and 0.316).
+    """
+    features = extract(texts, stats=False, verbose=False)
+    first_layer = min((name for name in features if name != "stats"), key=lambda name: int(name[1:]))
+    return features[first_layer]

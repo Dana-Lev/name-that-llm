@@ -50,6 +50,11 @@ NOTEBOOKS = {
         "TF-IDF + style features + fine-tuned DeBERTa",
         {"model": "tfidf_style_deberta_blend", "assign": False},
     ),
+    # Needs a GPU session, deberta-v3-base and an open language model (Qwen 3 4B) attached.
+    "submission_full_blend.ipynb": (
+        "TF-IDF + style features + fine-tuned DeBERTa + language-model features",
+        {"model": "full_blend", "assign": False},
+    ),
 }
 
 # Notebooks that run an experiment instead of writing a submission:

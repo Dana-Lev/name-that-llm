@@ -27,3 +27,19 @@ def build_style_logreg(C=1.0, max_iter=3000):
             ("clf", LogisticRegression(C=C, max_iter=max_iter, class_weight="balanced")),
         ]
     )
+
+
+def build_llm_logreg(C=0.01, max_iter=2000):
+    """Logistic regression on features from a frozen language model (src/features/llm.py).
+
+    Needs a GPU and the language model attached; see find_llm.
+    """
+    from src.features.llm import early_layer_features
+
+    return Pipeline(
+        [
+            ("features", FunctionTransformer(early_layer_features)),
+            ("scale", StandardScaler()),
+            ("clf", LogisticRegression(C=C, max_iter=max_iter, class_weight="balanced")),
+        ]
+    )

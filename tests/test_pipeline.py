@@ -273,3 +273,19 @@ def test_pool_experiment_runs_on_a_fake_pool(tmp_path, monkeypatch):
     scores = table.set_index(["variant", "model"])["score"]
     assert scores["pool_2500", "tfidf"] > 0.9 and scores["train_plus_pool_cv", "tfidf"] > 0.9
     assert np.load(tmp_path / "probs_pool_2500_blend.npy").shape == (len(df), len(LABELS))
+
+
+def test_pool_augmented_model_trains_on_both_sources(tmp_path, monkeypatch):
+    """Tell-tale words that exist only in the pool must still be learned."""
+    from src.models.pool_model import PoolAugmented
+
+    pool = synthetic_train(n_prompts=12, seed=1)[["text", "model"]]
+    pool["match_weight"] = 1.0
+    pool.to_parquet(tmp_path / "ntl_open_pool.parquet")
+    monkeypatch.setenv("NTL_POOL_FILE", str(tmp_path / "ntl_open_pool.parquet"))
+
+    test = synthetic_train(n_prompts=3, seed=2)
+    one_class = test[test["label"] == 0]  # train.csv side knows a single model
+    model = PoolAugmented(build_tfidf_logreg, per_label=10).fit(one_class["text"], one_class["label"])
+    assert len(model.classes_) == len(LABELS)
+    assert (model.predict(test["text"]) == test["label"]).mean() > 0.9

@@ -22,7 +22,8 @@ import pandas as pd
 from sklearn.metrics import balanced_accuracy_score
 
 from src.data import LABELS, find_data_dir, load_train, make_folds
-from src.models.linear import build_style_logreg, build_tfidf_logreg
+from src.models.linear import build_style_logreg
+from src.models.pool_model import build_big_tfidf_logreg
 from src.pool import load_pool, sample_pool
 
 EPS = 1e-12
@@ -35,19 +36,10 @@ VARIANTS = {
 CV_PER_LABEL = 2500  # pool passages per label added to each training fold
 
 
-def build_pool_tfidf():
-    """The pool is 20 to 80 times larger than train.csv, so the vocabulary and
-    the number of optimiser steps are capped to keep the fit to minutes."""
-    model = build_tfidf_logreg(max_iter=300, min_df=3)
-    for _, vectorizer in model.named_steps["tfidf"].transformer_list:
-        vectorizer.set_params(max_features=300_000, dtype=np.float32)
-    return model
-
-
 def fit_predict(train_texts, train_labels, test_texts):
     """Fit both models; return {model name: probabilities with 18 columns}."""
     out = {}
-    for name, build in (("tfidf", build_pool_tfidf), ("style", build_style_logreg)):
+    for name, build in (("tfidf", build_big_tfidf_logreg), ("style", build_style_logreg)):
         model = build().fit(train_texts, train_labels)
         probs = np.zeros((len(test_texts), len(LABELS)))
         probs[:, model.classes_] = model.predict_proba(test_texts)

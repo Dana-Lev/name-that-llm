@@ -25,11 +25,12 @@ SOURCES = [
     "src/models/linear.py",
     "src/models/blend.py",
     "src/models/transformer.py",
+    "src/pool.py",
+    "src/models/pool_model.py",
     "src/models/__init__.py",
     "src/prompts.py",
     "src/predict.py",
     "src/llm_experiment.py",
-    "src/pool.py",
     "src/pool_experiment.py",
 ]
 
@@ -56,6 +57,11 @@ NOTEBOOKS = {
     "submission_full_blend.ipynb": (
         "TF-IDF + style features + fine-tuned DeBERTa + language-model features",
         {"model": "full_blend", "assign": False},
+    ),
+    # As the full blend, plus the open pool dataset attached (crtproduction/name-that-llm-open-pool).
+    "submission_pool_blend.ipynb": (
+        "the full blend with TF-IDF trained on the public open pool",
+        {"model": "pool_blend", "assign": False},
     ),
 }
 

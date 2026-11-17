@@ -98,18 +98,21 @@ def extract(texts, source=None, batch_size=8, max_length=512, verbose=True):
                 hidden = out.hidden_states[k].float()
                 features[f"L{k}"][rows] = ((hidden * weights).sum(1) / weights.sum(1)).cpu().numpy()
 
-            # Position t predicts token t+1.
-            log_probs = torch.log_softmax(out.logits[:, :-1].float(), dim=-1)
-            actual = log_probs.gather(-1, encoded["input_ids"][:, 1:].unsqueeze(-1)).squeeze(-1)
-            entropy = -(log_probs.exp() * log_probs).sum(-1)
-            rank = (log_probs > actual.unsqueeze(-1)).sum(-1)
-            real = (mask[:, 1:] * mask[:, :-1]).bool()
+            # Position t predicts token t+1. One passage at a time: the scores
+            # over the whole vocabulary (150k words per token) for a full batch
+            # don't fit in a 16 GB GPU.
+            lengths = mask.sum(1).tolist()
             for j, i in enumerate(rows):
-                if real[j].sum() == 0:  # a one-token passage has nothing to predict
+                n = int(lengths[j])
+                if n < 2:  # a one-token passage has nothing to predict
                     continue
-                lp = actual[j][real[j]].cpu().numpy()
-                en = entropy[j][real[j]].cpu().numpy()
-                rk = rank[j][real[j]].cpu().numpy()
+                log_probs = torch.log_softmax(out.logits[j, : n - 1].float(), dim=-1)
+                target = encoded["input_ids"][j, 1:n].unsqueeze(-1)
+                actual = log_probs.gather(-1, target)
+                lp = actual.squeeze(-1).cpu().numpy()
+                en = (-(log_probs.exp() * log_probs).sum(-1)).cpu().numpy()
+                rk = (log_probs > actual).sum(-1).cpu().numpy()
+                del log_probs
                 features["stats"][i] = [
                     lp.mean(), lp.std(), *np.quantile(lp, [0.05, 0.25, 0.5, 0.75, 0.95]),
                     en.mean(), en.std(), (lp + en).mean(),

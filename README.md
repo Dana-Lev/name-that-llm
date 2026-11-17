@@ -57,7 +57,7 @@ fold, saves out-of-fold probabilities to `oof/`, and appends rows to `experiment
 | TF-IDF + style | 0.384 | 0.496 | 0.356 |
 | TF-IDF + style + DeBERTa | 0.418 | | 0.391 |
 | Qwen 3 4B features only | 0.379 | | |
-| TF-IDF + style + DeBERTa + Qwen features | 0.447 | | |
+| TF-IDF + style + DeBERTa + Qwen features | 0.447 | | 0.411 |
 
 Balanced accuracy, mean of 5 prompt-grouped folds; the standard deviation across folds is 0.01–0.03.
 Random guessing scores 0.056.

@@ -249,3 +249,27 @@ def test_llm_experiment_runs_on_fake_features(tmp_path, monkeypatch):
     assert best["L1"] > 0.9 and best["stats"] < 0.5
     assert np.load(tmp_path / "oof_llm_all_layers_stats.npy").shape == (len(df), len(LABELS))
     assert (tmp_path / "llm_features.npz").exists()
+
+
+def test_pool_experiment_runs_on_a_fake_pool(tmp_path, monkeypatch):
+    """A pool with the same tell-tale words must name the models of train.csv."""
+    import src.pool_experiment as experiment
+    from src.pool import load_pool, sample_pool
+
+    df = synthetic_train(n_prompts=10)
+    pool = synthetic_train(n_prompts=12, seed=1)[["text", "model"]]
+    pool["match_weight"] = 1.0
+    pool = pd.concat([pool, pd.DataFrame({"text": ["x"], "model": ["not-a-label"], "match_weight": [1.0]})])
+    pool.to_parquet(tmp_path / "ntl_open_pool.parquet")
+    monkeypatch.setenv("NTL_POOL_FILE", str(tmp_path / "ntl_open_pool.parquet"))
+    monkeypatch.setattr(experiment, "load_train", lambda _: df)
+    monkeypatch.setattr(experiment, "find_data_dir", lambda: "unused")
+
+    loaded = load_pool()
+    assert len(loaded) == 12 * len(LABELS) and set(loaded["label"]) == set(range(len(LABELS)))
+    assert sample_pool(loaded, 5, matched=True)["label"].value_counts().eq(5).all()
+
+    table = experiment.main(tmp_path)
+    scores = table.set_index(["variant", "model"])["score"]
+    assert scores["pool_2500", "tfidf"] > 0.9 and scores["train_plus_pool_cv", "tfidf"] > 0.9
+    assert np.load(tmp_path / "probs_pool_2500_blend.npy").shape == (len(df), len(LABELS))

@@ -29,6 +29,8 @@ SOURCES = [
     "src/prompts.py",
     "src/predict.py",
     "src/llm_experiment.py",
+    "src/pool.py",
+    "src/pool_experiment.py",
 ]
 
 # notebook file name -> (title, arguments of make_submission)
@@ -60,6 +62,14 @@ NOTEBOOKS = {
 # Notebooks that run an experiment instead of writing a submission:
 # file name -> (title, what it does, code of the last cell)
 EXPERIMENTS = {
+    # CPU is enough. Needs the open pool dataset attached (crtproduction/name-that-llm-open-pool).
+    "experiment_open_pool.ipynb": (
+        "training on the public open pool",
+        "then train the TF-IDF and style models on the public open pool of extra passages "
+        "and score them on `train.csv`. This is an experiment: do not submit it.",
+        "from src.pool_experiment import main\n\ntable = main()\n"
+        'table.pivot(index="variant", columns="model", values="score").round(4)',
+    ),
     # Needs a GPU session and an open language model (e.g. Qwen 3) attached.
     "experiment_llm_features.ipynb": (
         "features from a frozen language model",

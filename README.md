@@ -60,6 +60,8 @@ fold, saves out-of-fold probabilities to `oof/`, and appends rows to `experiment
 | TF-IDF + style + DeBERTa + Qwen features | 0.447 | | 0.411 |
 | TF-IDF trained on the open pool only (scored on all of train.csv) | 0.485 | | |
 | Pool TF-IDF + style + DeBERTa + Qwen features | 0.538 | | 0.492 |
+| DeBERTa trained on the open pool only (scored on all of train.csv) | 0.500 | | |
+| Pool TF-IDF + style + pool DeBERTa + Qwen features | 0.573 | | |
 
 Balanced accuracy, mean of 5 prompt-grouped folds; the standard deviation across folds is 0.01–0.03.
 Random guessing scores 0.056.
@@ -87,6 +89,7 @@ python -m src.build_notebook                        # rewrites the notebooks in 
 | `submission_blend.ipynb` | Blend |
 | `submission_blend_assign.ipynb` | Blend with one model per prompt |
 | `submission_pool_blend.ipynb` | All four models, TF-IDF trained on the open pool too. Needs a GPU session, `deberta-v3-base`, Qwen 3 4B and the open pool dataset attached |
+| `submission_pool_deberta_blend.ipynb` | TF-IDF and DeBERTa trained on the open pool, plus style and Qwen features. Needs a GPU session, Qwen 3 4B, the open pool dataset and the output of `ntl-train-deberta-pool` attached |
 | `submission_full_blend.ipynb` | All four models. Needs a GPU session, `deberta-v3-base` and Qwen 3 4B attached |
 | `submission_deberta_blend.ipynb` | Blend with fine-tuned DeBERTa. Needs a GPU session and `deberta-v3-base` attached as an input |
 

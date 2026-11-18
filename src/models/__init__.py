@@ -3,7 +3,7 @@
 from src.models.blend import LogProbBlend
 from src.models.linear import build_llm_logreg, build_style_logreg, build_tfidf_logreg
 from src.models.pool_model import build_pool_tfidf_logreg
-from src.models.transformer import build_deberta_base, build_deberta_small
+from src.models.transformer import SavedEncoder, build_deberta_base, build_deberta_small
 
 
 def build_tfidf_style_blend(style_weight=0.5):
@@ -43,6 +43,24 @@ def build_pool_blend(style_weight=0.5, deberta_weight=0.5, llm_weight=0.5):
     )
 
 
+def build_pool_deberta_blend(style_weight=0.5, deberta_weight=1.0, llm_weight=0.5):
+    """TF-IDF and DeBERTa both trained on the open pool.
+
+    The DeBERTa was trained in train_deberta_pool.ipynb and is only loaded
+    here, so that notebook's output must be attached. Weights from
+    src.blend_oof: the best ones lie on a flat plateau (0.573-0.576), and the
+    DeBERTa trained on train.csv adds nothing once this one is in.
+    """
+    return LogProbBlend(
+        [
+            (build_pool_tfidf_logreg, 1.0),
+            (build_style_logreg, style_weight),
+            (SavedEncoder, deberta_weight),
+            (build_llm_logreg, llm_weight),
+        ]
+    )
+
+
 MODELS = {
     "tfidf_logreg": build_tfidf_logreg,
     "style_logreg": build_style_logreg,
@@ -54,6 +72,8 @@ MODELS = {
     "full_blend": build_full_blend,
     "pool_tfidf_logreg": build_pool_tfidf_logreg,
     "pool_blend": build_pool_blend,
+    "deberta_pool": SavedEncoder,
+    "pool_deberta_blend": build_pool_deberta_blend,
 }
 
 # Models too heavy for a quick test: they fine-tune or run a pretrained
@@ -66,4 +86,6 @@ NEURAL = {
     "full_blend",
     "pool_tfidf_logreg",
     "pool_blend",
+    "deberta_pool",
+    "pool_deberta_blend",
 }

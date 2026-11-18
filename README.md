@@ -91,7 +91,13 @@ python -m src.build_notebook                        # rewrites the notebooks in 
 | `submission_deberta_blend.ipynb` | Blend with fine-tuned DeBERTa. Needs a GPU session and `deberta-v3-base` attached as an input |
 
 Upload a notebook to the competition on Kaggle, attach the competition data, keep internet off,
-save a version and submit it. `python -m src.predict --model tfidf_style_blend --assign` does the
+save a version and submit it.
+
+`train_deberta_pool.ipynb` is not a submission: it fine-tunes DeBERTa-v3-base on about 70,000
+open-pool passages (GPU, `deberta-v3-base` and the open pool attached), scores it on all of
+`train.csv`, and saves the model as notebook output for later submissions to load.
+
+`python -m src.predict --model tfidf_style_blend --assign` does the
 same locally.
 
 ## Validation

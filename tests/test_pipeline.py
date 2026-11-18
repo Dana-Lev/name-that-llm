@@ -289,3 +289,16 @@ def test_pool_augmented_model_trains_on_both_sources(tmp_path, monkeypatch):
     model = PoolAugmented(build_tfidf_logreg, per_label=10).fit(one_class["text"], one_class["label"])
     assert len(model.classes_) == len(LABELS)
     assert (model.predict(test["text"]) == test["label"]).mean() > 0.9
+
+
+def test_find_saved_encoder(tmp_path, monkeypatch):
+    """The submission finds the trained model by its marker file, wherever Kaggle mounts it."""
+    from src.models.transformer import MARKER_FILE, find_saved_encoder
+
+    monkeypatch.delenv("NTL_ENCODER_DIR", raising=False)
+    with pytest.raises(FileNotFoundError):
+        find_saved_encoder(tmp_path)
+    saved = tmp_path / "notebooks" / "danalev1" / "ntl-train-deberta-pool" / "deberta_pool"
+    saved.mkdir(parents=True)
+    (saved / MARKER_FILE).write_text("{}")
+    assert find_saved_encoder(tmp_path) == saved

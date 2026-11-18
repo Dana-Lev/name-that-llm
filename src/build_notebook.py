@@ -32,6 +32,7 @@ SOURCES = [
     "src/predict.py",
     "src/llm_experiment.py",
     "src/pool_experiment.py",
+    "src/pool_encoder.py",
 ]
 
 # notebook file name -> (title, arguments of make_submission)
@@ -68,6 +69,14 @@ NOTEBOOKS = {
 # Notebooks that run an experiment instead of writing a submission:
 # file name -> (title, what it does, code of the last cell)
 EXPERIMENTS = {
+    # Needs a GPU session, deberta-v3-base and the open pool dataset attached.
+    # Its output (the trained model) is an input of later submission notebooks.
+    "train_deberta_pool.ipynb": (
+        "DeBERTa trained on the public open pool",
+        "then fine-tune DeBERTa-v3-base on the public open pool, save it, and score it on "
+        "`train.csv`. This trains a model for later submissions: do not submit it.",
+        "from src.pool_encoder import main\n\nmain()",
+    ),
     # CPU is enough. Needs the open pool dataset attached (crtproduction/name-that-llm-open-pool).
     "experiment_open_pool.ipynb": (
         "training on the public open pool",

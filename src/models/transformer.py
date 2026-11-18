@@ -8,12 +8,16 @@ torch and transformers are imported inside the class so the rest of the
 project works without them.
 """
 
+import json
 import os
+import time
 from pathlib import Path
 
 import numpy as np
 
 DEFAULT_MODEL = "microsoft/deberta-v3-base"
+MARKER_FILE = "ntl_encoder.json"  # written by FineTunedEncoder.save
+HEAD_FILE = "ntl_head.pt"
 
 
 def find_pretrained(name=DEFAULT_MODEL):
@@ -81,7 +85,14 @@ class FineTunedEncoder:
         label_smoothing=0.05,
         seed=42,
         verbose=False,
+        fast=False,
+        progress_every=0,
+        time_limit_hours=None,
     ):
+        """fast=True is for large training sets on a GPU: 16-bit arithmetic
+        and batches of passages of similar length. progress_every=N prints
+        the loss and the time left every N steps. time_limit_hours stops
+        training early, so a Kaggle run (killed at 12 hours) still saves."""
         self.pretrained = pretrained
         self.epochs = epochs
         self.lr = lr
@@ -91,6 +102,36 @@ class FineTunedEncoder:
         self.label_smoothing = label_smoothing
         self.seed = seed
         self.verbose = verbose
+        self.fast = fast
+        self.progress_every = progress_every
+        self.time_limit_hours = time_limit_hours
+
+    def _autocast(self):
+        import contextlib
+
+        import torch
+
+        if self.fast and self.device_ == "cuda":
+            return torch.autocast("cuda", dtype=torch.float16)
+        return contextlib.nullcontext()
+
+    def _training_order(self, texts, rng):
+        """Shuffled row order for one epoch.
+
+        With fast=True, rows are shuffled, cut into chunks of 64 batches,
+        sorted by length inside each chunk, and the batches shuffled again:
+        still random, but with little padding.
+        """
+        order = rng.permutation(len(texts))
+        if not self.fast:
+            return order
+        chunk = self.batch_size * 64
+        batches = []
+        for start in range(0, len(order), chunk):
+            part = order[start : start + chunk]
+            part = part[np.argsort([len(texts[i]) for i in part], kind="stable")]
+            batches += [part[i : i + self.batch_size] for i in range(0, len(part), self.batch_size)]
+        return np.concatenate([batches[i] for i in rng.permutation(len(batches))])
 
     def _batches(self, texts, order):
         import torch
@@ -150,25 +191,61 @@ class FineTunedEncoder:
         steps = self.epochs * int(np.ceil(len(texts) / self.batch_size))
         schedule = get_cosine_schedule_with_warmup(optimizer, int(0.1 * steps), steps)
         parameters = list(self.encoder_.parameters()) + list(self.head_.parameters())
+        # 16-bit arithmetic needs the loss scaled up so small gradients survive.
+        scaler = torch.amp.GradScaler("cuda", enabled=self.fast and self.device_ == "cuda")
 
+        started = time.time()
+        step = 0
         for epoch in range(self.epochs):
             self.encoder_.train()
             self.dropout_.train()
-            total = 0.0
-            for rows, ids, mask in self._batches(texts, rng.permutation(len(texts))):
+            total, seen, recent = 0.0, 0, []
+            for rows, ids, mask in self._batches(texts, self._training_order(texts, rng)):
                 target = torch.tensor(targets[rows]).to(self.device_)
+                with self._autocast():
+                    logits = self._logits(ids, mask)
                 loss = nn.functional.cross_entropy(
-                    self._logits(ids, mask), target, label_smoothing=self.label_smoothing
+                    logits.float(), target, label_smoothing=self.label_smoothing
                 )
-                loss.backward()
+                scaler.scale(loss).backward()
+                scaler.unscale_(optimizer)
                 nn.utils.clip_grad_norm_(parameters, 1.0)
-                optimizer.step()
+                scaler.step(optimizer)
+                scaler.update()
                 schedule.step()
                 optimizer.zero_grad()
                 total += loss.item() * len(rows)
+                seen += len(rows)
+                recent.append(loss.item())
+                step += 1
+
+                elapsed = time.time() - started
+                if self.progress_every and step % self.progress_every == 0:
+                    left = elapsed / step * (steps - step)
+                    print(f"step {step}/{steps} (epoch {epoch + 1}): loss {np.mean(recent):.3f}, "
+                          f"{elapsed / 60:.0f} min so far, about {left / 60:.0f} min left", flush=True)  # fmt: skip
+                    recent = []
+                if self.time_limit_hours and elapsed > self.time_limit_hours * 3600:
+                    print(f"time limit of {self.time_limit_hours} h reached at step {step}/{steps}: "
+                          "stopping early", flush=True)  # fmt: skip
+                    return self
             if self.verbose:
-                print(f"epoch {epoch + 1}/{self.epochs}: training loss {total / len(texts):.3f}", flush=True)
+                print(f"epoch {epoch + 1}/{self.epochs}: training loss {total / seen:.3f}", flush=True)
         return self
+
+    def save(self, folder):
+        """Write everything predict_proba needs; load it back with load_encoder."""
+        import torch
+
+        folder = Path(folder)
+        folder.mkdir(parents=True, exist_ok=True)
+        self.encoder_.save_pretrained(folder)
+        self.tokenizer_.save_pretrained(folder)
+        torch.save(self.head_.state_dict(), folder / HEAD_FILE)
+        settings = {"classes": self.classes_.tolist(), "batch_size": self.batch_size,
+                    "max_length": self.max_length, "fast": self.fast}  # fmt: skip
+        (folder / MARKER_FILE).write_text(json.dumps(settings))
+        return folder
 
     def predict_proba(self, texts):
         import torch
@@ -181,8 +258,66 @@ class FineTunedEncoder:
         order = np.argsort([len(text) for text in texts], kind="stable")
         with torch.no_grad():
             for rows, ids, mask in self._batches(texts, order):
-                probs[rows] = torch.softmax(self._logits(ids, mask), dim=-1).cpu().numpy()
+                with self._autocast():
+                    logits = self._logits(ids, mask)
+                probs[rows] = torch.softmax(logits.float(), dim=-1).cpu().numpy()
         return probs
+
+    def predict(self, texts):
+        return self.classes_[self.predict_proba(texts).argmax(axis=1)]
+
+
+def load_encoder(folder):
+    """A FineTunedEncoder saved with .save(), ready to predict."""
+    import torch
+    from torch import nn
+    from transformers import AutoModel, AutoTokenizer
+
+    folder = Path(folder)
+    settings = json.loads((folder / MARKER_FILE).read_text())
+    model = FineTunedEncoder(
+        str(folder), batch_size=settings["batch_size"], max_length=settings["max_length"], fast=settings["fast"]
+    )
+    model.classes_ = np.array(settings["classes"])
+    model.device_ = pick_device()
+    model.tokenizer_ = AutoTokenizer.from_pretrained(folder)
+    model.encoder_ = AutoModel.from_pretrained(folder).float().to(model.device_)
+    model.dropout_ = nn.Dropout(0.1)
+    model.head_ = nn.Linear(model.encoder_.config.hidden_size, len(model.classes_))
+    model.head_.load_state_dict(torch.load(folder / HEAD_FILE, map_location="cpu"))
+    model.head_.to(model.device_)
+    return model
+
+
+def find_saved_encoder(root="/kaggle/input"):
+    """Folder of an encoder saved by .save(): $NTL_ENCODER_DIR, or the first under `root`."""
+    override = os.environ.get("NTL_ENCODER_DIR")
+    if override:
+        return Path(override)
+    hits = sorted(Path(root).rglob(MARKER_FILE))
+    if not hits:
+        raise FileNotFoundError(
+            f"no saved encoder ({MARKER_FILE}) under {root}: attach the output of the "
+            "notebook that trained it (train_deberta_pool.ipynb) as an input"
+        )
+    return hits[0].parent
+
+
+class SavedEncoder:
+    """An encoder trained in another notebook. fit() only loads it.
+
+    The training passages given to fit are ignored: the model already learned
+    from the open pool. This lets a submission use a model that takes hours
+    to train.
+    """
+
+    def fit(self, texts, y):
+        self.model_ = load_encoder(find_saved_encoder())
+        self.classes_ = self.model_.classes_
+        return self
+
+    def predict_proba(self, texts):
+        return self.model_.predict_proba(texts)
 
     def predict(self, texts):
         return self.classes_[self.predict_proba(texts).argmax(axis=1)]

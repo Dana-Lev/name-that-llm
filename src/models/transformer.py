@@ -293,6 +293,8 @@ def find_saved_encoder(root="/kaggle/input"):
     """Folder of an encoder saved by .save(): $NTL_ENCODER_DIR, or the first under `root`."""
     override = os.environ.get("NTL_ENCODER_DIR")
     if override:
+        if not (Path(override) / MARKER_FILE).exists():
+            raise FileNotFoundError(f"$NTL_ENCODER_DIR={override} has no {MARKER_FILE}")
         return Path(override)
     hits = sorted(Path(root).rglob(MARKER_FILE))
     if not hits:

@@ -10,7 +10,7 @@ import argparse
 import pandas as pd
 
 from src.data import LABELS, find_data_dir, load_test, load_train
-from src.models import MODELS
+from src.models import INPUTS, MODELS
 from src.prompts import assign_within_groups, cluster_prompts
 
 
@@ -27,11 +27,28 @@ def check_submission(submission, test):
         raise ValueError(f"labels outside the 18 valid ones: {sorted(unknown)}")
 
 
+def find_inputs(model):
+    """Locate every Kaggle input the model needs, before any slow training.
+
+    A missing input then fails in seconds with a clear message, instead of
+    an hour into the run (or invisibly, in the rerun on the hidden test).
+    """
+    from src.features.llm import find_llm
+    from src.models.transformer import find_pretrained, find_saved_encoder
+    from src.pool import find_pool
+
+    finders = {"pool": find_pool, "llm": find_llm, "deberta": find_pretrained, "encoder": find_saved_encoder}
+    for need in INPUTS.get(model, ()):
+        print(f"input {need}: {finders[need]()}", flush=True)
+
+
 def make_submission(model="tfidf_logreg", assign=False, data_dir=None, out="submission.parquet"):
     """With assign=True, group the test passages by prompt and let no model
     repeat inside a group (see src/prompts.py)."""
     data_dir = find_data_dir() if data_dir is None else data_dir
     train, test = load_train(data_dir), load_test(data_dir)
+    print(f"train.csv: {len(train)} passages; test.csv: {len(test)} passages", flush=True)
+    find_inputs(model)
 
     fitted = MODELS[model]().fit(train["text"], train["label"])
     # Columns of predict_proba follow fitted.classes_, which are label ids.

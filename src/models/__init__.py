@@ -76,6 +76,21 @@ MODELS = {
     "pool_deberta_blend": build_pool_deberta_blend,
 }
 
+# Kaggle inputs each model needs besides the competition data (see
+# src.predict.find_inputs): the open pool, an open language model, the
+# deberta-v3-base weights, or the encoder saved by train_deberta_pool.ipynb.
+INPUTS = {
+    "deberta_small": ("deberta",),
+    "deberta_base": ("deberta",),
+    "tfidf_style_deberta_blend": ("deberta",),
+    "llm_logreg": ("llm",),
+    "full_blend": ("deberta", "llm"),
+    "pool_tfidf_logreg": ("pool",),
+    "pool_blend": ("pool", "deberta", "llm"),
+    "deberta_pool": ("encoder",),
+    "pool_deberta_blend": ("pool", "llm", "encoder"),
+}
+
 # Models too heavy for a quick test: they fine-tune or run a pretrained
 # network, or train on the open pool. Run them on Kaggle.
 NEURAL = {

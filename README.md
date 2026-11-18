@@ -59,7 +59,7 @@ fold, saves out-of-fold probabilities to `oof/`, and appends rows to `experiment
 | Qwen 3 4B features only | 0.379 | | |
 | TF-IDF + style + DeBERTa + Qwen features | 0.447 | | 0.411 |
 | TF-IDF trained on the open pool only (scored on all of train.csv) | 0.485 | | |
-| Pool TF-IDF + style + DeBERTa + Qwen features | 0.538 | | |
+| Pool TF-IDF + style + DeBERTa + Qwen features | 0.538 | | 0.492 |
 
 Balanced accuracy, mean of 5 prompt-grouped folds; the standard deviation across folds is 0.01–0.03.
 Random guessing scores 0.056.

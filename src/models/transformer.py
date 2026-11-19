@@ -290,7 +290,11 @@ def load_encoder(folder):
 
 
 def find_saved_encoder(root="/kaggle/input"):
-    """Folder of an encoder saved by .save(): $NTL_ENCODER_DIR, or the first under `root`."""
+    """Folder of an encoder saved by .save(): $NTL_ENCODER_DIR, or the only one under `root`.
+
+    Two saved encoders under `root` is an error rather than a guess, so a
+    submission never silently loads the wrong one.
+    """
     override = os.environ.get("NTL_ENCODER_DIR")
     if override:
         if not (Path(override) / MARKER_FILE).exists():
@@ -302,6 +306,9 @@ def find_saved_encoder(root="/kaggle/input"):
             f"no saved encoder ({MARKER_FILE}) under {root}: attach the output of the "
             "notebook that trained it (train_deberta_pool.ipynb) as an input"
         )
+    if len(hits) > 1:
+        found = ", ".join(str(hit.parent) for hit in hits)
+        raise ValueError(f"more than one saved encoder under {root} ({found}): attach only one")
     return hits[0].parent
 
 

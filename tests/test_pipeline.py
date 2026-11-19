@@ -302,3 +302,9 @@ def test_find_saved_encoder(tmp_path, monkeypatch):
     saved.mkdir(parents=True)
     (saved / MARKER_FILE).write_text("{}")
     assert find_saved_encoder(tmp_path) == saved
+
+    other = tmp_path / "notebooks" / "danalev1" / "ntl-train-deberta-pool-long" / "deberta_pool_long"
+    other.mkdir(parents=True)
+    (other / MARKER_FILE).write_text("{}")
+    with pytest.raises(ValueError):
+        find_saved_encoder(tmp_path)

@@ -9,11 +9,13 @@ The model learns from pool passages only, never from train.csv, so scoring it
 on all of train.csv is a held-out test (the pool has no answers to
 train.csv's prompts). Outputs:
 
-- deberta_pool/: the trained model. Attach this notebook's output to a
+- <name>/: the trained model. Attach this notebook's output to a
   submission notebook, where SavedEncoder loads it instead of training.
-- probs_deberta_pool.npy: class probabilities for every train.csv passage,
-  for choosing blend weights locally.
-- deberta_pool.csv: the score.
+- probs_<name>.npy: class probabilities for every train.csv passage, for
+  choosing blend weights locally.
+- <name>.csv: the score.
+
+`name` is deberta_pool by default.
 """
 
 import time
@@ -45,7 +47,7 @@ def build_pool_encoder(**kwargs):
     return FineTunedEncoder("microsoft/deberta-v3-base", **settings)
 
 
-def main(out_dir=".", per_label=PER_LABEL, matched=True, **encoder_settings):
+def main(out_dir=".", per_label=PER_LABEL, matched=True, name="deberta_pool", **encoder_settings):
     out_dir = Path(out_dir)
     df = load_train(find_data_dir())
     sample = sample_pool(load_pool(), per_label, matched)
@@ -54,17 +56,17 @@ def main(out_dir=".", per_label=PER_LABEL, matched=True, **encoder_settings):
     started = time.time()
     model = build_pool_encoder(**encoder_settings).fit(sample["text"], sample["label"])
     minutes = (time.time() - started) / 60
-    model.save(out_dir / "deberta_pool")  # before scoring, so the weights survive a later error
-    print(f"trained in {minutes:.0f} min; saved to {out_dir / 'deberta_pool'}", flush=True)
+    model.save(out_dir / name)  # before scoring, so the weights survive a later error
+    print(f"trained in {minutes:.0f} min; saved to {out_dir / name}", flush=True)
 
     probs = np.zeros((len(df), len(LABELS)))
     probs[:, model.classes_] = model.predict_proba(df["text"])
-    np.save(out_dir / "probs_deberta_pool.npy", probs)
+    np.save(out_dir / f"probs_{name}.npy", probs)
     score = balanced_accuracy_score(df["label"], probs.argmax(axis=1))
     print(f"balanced accuracy on train.csv: {score:.4f}", flush=True)
 
     table = pd.DataFrame(
-        [{"model": "deberta_pool", "n_train": len(sample), "minutes": round(minutes), "score": score}]
+        [{"model": name, "n_train": len(sample), "minutes": round(minutes), "score": score}]
     )
-    table.to_csv(out_dir / "deberta_pool.csv", index=False)
+    table.to_csv(out_dir / f"{name}.csv", index=False)
     return table

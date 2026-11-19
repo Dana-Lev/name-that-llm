@@ -83,6 +83,15 @@ EXPERIMENTS = {
         "`train.csv`. This trains a model for later submissions: do not submit it.",
         "from src.pool_encoder import main\n\nmain()",
     ),
+    # The same with about twice the passages and 3 epochs instead of 2: about 2.5 hours on a
+    # T4, against 51 minutes for the first run, whose loss was still falling.
+    "train_deberta_pool_long.ipynb": (
+        "DeBERTa trained longer on the public open pool",
+        "then fine-tune DeBERTa-v3-base on up to 8,000 open-pool passages per model (about "
+        "136,000) for 3 epochs, save it, and score it on `train.csv`. This trains a model for "
+        "later submissions: do not submit it.",
+        'from src.pool_encoder import main\n\nmain(name="deberta_pool_long", per_label=8000, epochs=3)',
+    ),
     # CPU is enough. Needs the open pool dataset attached (crtproduction/name-that-llm-open-pool).
     "experiment_open_pool.ipynb": (
         "training on the public open pool",

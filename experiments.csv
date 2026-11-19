@@ -13,4 +13,4 @@ date,owner,name,git_commit,cv_mean,cv_std,public_lb,notes
 2026-11-17,Dana,full_blend,d38d297,0.4471,0.0163,0.411,tfidf_logreg=1 style_logreg=0.5 deberta_base=0.5 qwen4b_L9=0.5
 2026-11-17,Dana,pool_tfidf_logreg,a4252f3,0.4852,0.0227,,pool_8000_tfidf=1
 2026-11-17,Dana,pool_blend,a4252f3,0.5383,0.0100,0.492,pool_8000_tfidf=1 style_logreg=0.5 deberta_base=0.5 qwen4b_L9=0.5
-2026-11-18,Dana,pool_deberta_blend,901a39b,0.5734,0.0152,,pool_8000_tfidf=1 style_logreg=0.5 deberta_pool=1 qwen4b_L9=0.5
+2026-11-18,Dana,pool_deberta_blend,901a39b,0.5734,0.0152,0.539,pool_8000_tfidf=1 style_logreg=0.5 deberta_pool=1 qwen4b_L9=0.5

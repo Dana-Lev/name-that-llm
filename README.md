@@ -102,7 +102,9 @@ save a version and submit it.
 open-pool passages (GPU, `deberta-v3-base` and the open pool attached), scores it on all of
 `train.csv`, and saves the model as notebook output for later submissions to load.
 `train_deberta_pool_long.ipynb` does the same with up to 8,000 passages per model (about 136,000)
-and 3 epochs, about 2.5 hours. A submission notebook loads whichever of the two is attached, and
+and 3 epochs, about 2.5 hours. `train_deberta_pool_big.ipynb` uses up to 12,000 per model (about
+192,000), with the loss weighted so the two models with under 5,000 pool passages count as much as
+the rest; about 3.2 hours. A submission notebook loads whichever of the two is attached, and
 stops if both are.
 
 `python -m src.predict --model tfidf_style_blend --assign` does the

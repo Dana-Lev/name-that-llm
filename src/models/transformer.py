@@ -88,11 +88,15 @@ class FineTunedEncoder:
         fast=False,
         progress_every=0,
         time_limit_hours=None,
+        balanced=False,
     ):
         """fast=True is for large training sets on a GPU: 16-bit arithmetic
         and batches of passages of similar length. progress_every=N prints
         the loss and the time left every N steps. time_limit_hours stops
-        training early, so a Kaggle run (killed at 12 hours) still saves."""
+        training early, so a Kaggle run (killed at 12 hours) still saves.
+        balanced=True weights the loss by 1 / (passages of that model), so
+        models with few training passages count as much as the others, as
+        they do in balanced accuracy."""
         self.pretrained = pretrained
         self.epochs = epochs
         self.lr = lr
@@ -105,6 +109,7 @@ class FineTunedEncoder:
         self.fast = fast
         self.progress_every = progress_every
         self.time_limit_hours = time_limit_hours
+        self.balanced = balanced
 
     def _autocast(self):
         import contextlib
@@ -193,6 +198,12 @@ class FineTunedEncoder:
         parameters = list(self.encoder_.parameters()) + list(self.head_.parameters())
         # 16-bit arithmetic needs the loss scaled up so small gradients survive.
         scaler = torch.amp.GradScaler("cuda", enabled=self.fast and self.device_ == "cuda")
+        class_weights = None
+        if self.balanced:
+            counts = np.bincount(targets, minlength=len(self.classes_))
+            # Mean weight 1 over the passages, so the learning rate means the same.
+            class_weights = torch.tensor(len(targets) / (len(counts) * counts), dtype=torch.float32)
+            class_weights = class_weights.to(self.device_)
 
         started = time.time()
         step = 0
@@ -205,7 +216,7 @@ class FineTunedEncoder:
                 with self._autocast():
                     logits = self._logits(ids, mask)
                 loss = nn.functional.cross_entropy(
-                    logits.float(), target, label_smoothing=self.label_smoothing
+                    logits.float(), target, weight=class_weights, label_smoothing=self.label_smoothing
                 )
                 scaler.scale(loss).backward()
                 scaler.unscale_(optimizer)

@@ -92,6 +92,17 @@ EXPERIMENTS = {
         "later submissions: do not submit it.",
         'from src.pool_encoder import main\n\nmain(name="deberta_pool_long", per_label=8000, epochs=3)',
     ),
+    # Up to 12,000 passages per model (about 192,000) for 3 epochs, about 3.2 hours on a T4.
+    # The loss is weighted per model: the smallest two have only 3,500 and 4,600 passages.
+    "train_deberta_pool_big.ipynb": (
+        "DeBERTa trained on most of the public open pool",
+        "then fine-tune DeBERTa-v3-base on up to 12,000 open-pool passages per model (about "
+        "192,000) for 3 epochs, with the loss weighted so every model counts the same, save "
+        "it, and score it on `train.csv`. This trains a model for later submissions: do not "
+        "submit it.",
+        'from src.pool_encoder import main\n\n'
+        'main(name="deberta_pool_big", per_label=12000, epochs=3, balanced=True)',
+    ),
     # CPU is enough. Needs the open pool dataset attached (crtproduction/name-that-llm-open-pool).
     "experiment_open_pool.ipynb": (
         "training on the public open pool",

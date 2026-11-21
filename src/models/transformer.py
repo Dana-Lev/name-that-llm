@@ -300,22 +300,28 @@ def load_encoder(folder):
     return model
 
 
-def find_saved_encoder(root="/kaggle/input"):
+def find_saved_encoder(root="/kaggle/input", name=None):
     """Folder of an encoder saved by .save(): $NTL_ENCODER_DIR, or the only one under `root`.
 
-    Two saved encoders under `root` is an error rather than a guess, so a
-    submission never silently loads the wrong one.
+    `name` is the folder the training run saved into (deberta_pool_long,
+    deberta_pool_big, ...); with it, only that encoder counts, so several
+    can be attached at once. Without it, two saved encoders under `root` is
+    an error rather than a guess, so a submission never silently loads the
+    wrong one.
     """
     override = os.environ.get("NTL_ENCODER_DIR")
-    if override:
+    if override and name is None:
         if not (Path(override) / MARKER_FILE).exists():
             raise FileNotFoundError(f"$NTL_ENCODER_DIR={override} has no {MARKER_FILE}")
         return Path(override)
     hits = sorted(Path(root).rglob(MARKER_FILE))
+    if name is not None:
+        hits = [hit for hit in hits if hit.parent.name == name]
     if not hits:
+        what = f"saved encoder {name}" if name else f"saved encoder ({MARKER_FILE})"
         raise FileNotFoundError(
-            f"no saved encoder ({MARKER_FILE}) under {root}: attach the output of the "
-            "notebook that trained it (train_deberta_pool.ipynb) as an input"
+            f"no {what} under {root}: attach the output of the notebook that trained it "
+            "(train_deberta_pool*.ipynb) as an input"
         )
     if len(hits) > 1:
         found = ", ".join(str(hit.parent) for hit in hits)
@@ -328,11 +334,15 @@ class SavedEncoder:
 
     The training passages given to fit are ignored: the model already learned
     from the open pool. This lets a submission use a model that takes hours
-    to train.
+    to train. `name` picks one encoder when several are attached (see
+    find_saved_encoder).
     """
 
+    def __init__(self, name=None):
+        self.name = name
+
     def fit(self, texts, y):
-        self.model_ = load_encoder(find_saved_encoder())
+        self.model_ = load_encoder(find_saved_encoder(name=self.name))
         self.classes_ = self.model_.classes_
         return self
 

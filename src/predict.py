@@ -39,7 +39,9 @@ def find_inputs(model):
 
     finders = {"pool": find_pool, "llm": find_llm, "deberta": find_pretrained, "encoder": find_saved_encoder}
     for need in INPUTS.get(model, ()):
-        print(f"input {need}: {finders[need]()}", flush=True)
+        kind, _, name = need.partition(":")  # "encoder:deberta_pool_big" names one encoder
+        path = finders[kind](name=name) if name else finders[kind]()
+        print(f"input {need}: {path}", flush=True)
 
 
 def make_submission(model="tfidf_logreg", assign=False, data_dir=None, out="submission.parquet"):

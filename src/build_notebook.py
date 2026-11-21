@@ -70,6 +70,12 @@ NOTEBOOKS = {
         "TF-IDF and DeBERTa trained on the public open pool, with style and language-model features",
         {"model": "pool_deberta_blend", "assign": False},
     ),
+    # Needs a GPU session, Qwen 3 4B, the open pool dataset, and the outputs of both
+    # ntl-train-deberta-pool-long and ntl-train-deberta-pool-big attached.
+    "submission_pool_two_deberta_blend.ipynb": (
+        "TF-IDF and two DeBERTas trained on the public open pool, with style and language-model features",
+        {"model": "pool_two_deberta_blend", "assign": False},
+    ),
 }
 
 # Notebooks that run an experiment instead of writing a submission:

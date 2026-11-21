@@ -308,3 +308,8 @@ def test_find_saved_encoder(tmp_path, monkeypatch):
     (other / MARKER_FILE).write_text("{}")
     with pytest.raises(ValueError):
         find_saved_encoder(tmp_path)
+    # By name, each of the two is found, and a missing one is reported.
+    assert find_saved_encoder(tmp_path, name="deberta_pool_long") == other
+    assert find_saved_encoder(tmp_path, name="deberta_pool") == saved
+    with pytest.raises(FileNotFoundError):
+        find_saved_encoder(tmp_path, name="deberta_pool_big")

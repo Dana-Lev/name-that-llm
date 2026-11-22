@@ -4,6 +4,11 @@ The encoder reads the passage as tokens, we average its output vectors over
 the passage and put one linear layer with 18 outputs on top. All weights are
 trained, with a small learning rate for the pretrained part.
 
+A large language model (Qwen 3) is fine-tuned the same way but with LoRA:
+its own weights stay frozen in 16-bit precision, and each linear layer gets
+a small trainable correction of low rank (see _lora_linear_class). Only those
+corrections and the output layer are trained and saved.
+
 torch and transformers are imported inside the class so the rest of the
 project works without them.
 """
@@ -18,10 +23,11 @@ import numpy as np
 DEFAULT_MODEL = "microsoft/deberta-v3-base"
 MARKER_FILE = "ntl_encoder.json"  # written by FineTunedEncoder.save
 HEAD_FILE = "ntl_head.pt"
+LORA_FILE = "ntl_lora.pt"  # the LoRA weights of an encoder trained with lora_rank
 
 
 def find_pretrained(name=DEFAULT_MODEL):
-    """Where to load the pretrained weights from.
+    """Where to load the pretrained weights from (`name` may also be a folder).
 
     Kaggle notebooks run without internet, so there the weights must be
     attached as an input; we look for a folder under /kaggle/input whose path
@@ -31,6 +37,8 @@ def find_pretrained(name=DEFAULT_MODEL):
     override = os.environ.get("NTL_PRETRAINED_DIR")
     if override:
         return override
+    if Path(name).is_dir():
+        return name
     kaggle_input = Path("/kaggle/input")
     if kaggle_input.exists():
         return find_weights_folder(kaggle_input, name)
@@ -61,6 +69,75 @@ def find_weights_folder(root, name=DEFAULT_MODEL):
     )
 
 
+_lora_class = None  # built on first use, so this module imports without torch
+
+
+def _lora_linear_class():
+    """A frozen nn.Linear plus a trainable low-rank correction.
+
+    output = base(x) + (alpha / rank) * B(A(dropout(x))), with A of shape
+    rank x in and B of shape out x rank. B starts at zero, so training starts
+    from the pretrained model exactly. A and B are kept in 32-bit precision.
+    """
+    global _lora_class
+    if _lora_class is not None:
+        return _lora_class
+    import math
+
+    from torch import nn
+
+    class _LoRALinear(nn.Module):
+        def __init__(self, base, rank, alpha, dropout):
+            super().__init__()
+            self.base = base
+            self.lora_a = nn.Linear(base.in_features, rank, bias=False)
+            self.lora_b = nn.Linear(rank, base.out_features, bias=False)
+            nn.init.kaiming_uniform_(self.lora_a.weight, a=math.sqrt(5))
+            nn.init.zeros_(self.lora_b.weight)
+            self.dropout = nn.Dropout(dropout)
+            self.scale = alpha / rank
+
+        def forward(self, x):
+            correction = self.lora_b(self.lora_a(self.dropout(x.to(self.lora_a.weight.dtype))))
+            return self.base(x) + (self.scale * correction).to(x.dtype)
+
+    _lora_class = _LoRALinear
+    return _lora_class
+
+
+def add_lora(model, rank, alpha, dropout=0.05):
+    """Freeze `model` and wrap every nn.Linear in it with LoRA.
+
+    Returns the number of trainable weights added.
+    """
+    from torch import nn
+
+    lora = _lora_linear_class()
+    model.requires_grad_(False)
+    targets = [
+        (parent, name, child)
+        for parent in model.modules()
+        for name, child in parent.named_children()
+        if isinstance(child, nn.Linear)
+    ]
+    for parent, name, child in targets:
+        setattr(parent, name, lora(child, rank, alpha, dropout))
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+
+def keep_first_layers(model, n):
+    """Drop every transformer layer after the first n.
+
+    For naming the model, early layers of a frozen Qwen 3 4B carried more
+    signal than later ones (src/features/llm.py), and half the layers is half
+    the compute.
+    """
+    model.layers = model.layers[:n]
+    model.config.num_hidden_layers = n
+    if getattr(model.config, "layer_types", None):
+        model.config.layer_types = model.config.layer_types[:n]
+
+
 def pick_device():
     import torch
 
@@ -89,6 +166,10 @@ class FineTunedEncoder:
         progress_every=0,
         time_limit_hours=None,
         balanced=False,
+        lora_rank=None,
+        lora_alpha=32,
+        keep_layers=None,
+        gradient_checkpointing=False,
     ):
         """fast=True is for large training sets on a GPU: 16-bit arithmetic
         and batches of passages of similar length. progress_every=N prints
@@ -96,7 +177,11 @@ class FineTunedEncoder:
         training early, so a Kaggle run (killed at 12 hours) still saves.
         balanced=True weights the loss by 1 / (passages of that model), so
         models with few training passages count as much as the others, as
-        they do in balanced accuracy."""
+        they do in balanced accuracy.
+        lora_rank=r trains a LoRA correction of rank r on a frozen 16-bit
+        model (for a large language model) instead of all weights;
+        keep_layers=n keeps only its first n layers. gradient_checkpointing
+        recomputes activations in the backward pass to save GPU memory."""
         self.pretrained = pretrained
         self.epochs = epochs
         self.lr = lr
@@ -110,6 +195,39 @@ class FineTunedEncoder:
         self.progress_every = progress_every
         self.time_limit_hours = time_limit_hours
         self.balanced = balanced
+        self.lora_rank = lora_rank
+        self.lora_alpha = lora_alpha
+        self.keep_layers = keep_layers
+        self.gradient_checkpointing = gradient_checkpointing
+
+    def _load_network(self, source):
+        """Tokenizer and encoder from `source`, on self.device_."""
+        import torch
+        from transformers import AutoModel, AutoTokenizer
+
+        self.tokenizer_ = AutoTokenizer.from_pretrained(source)
+        if self.tokenizer_.pad_token is None:
+            self.tokenizer_.pad_token = self.tokenizer_.eos_token
+        self.tokenizer_.padding_side = "right"  # mean pooling uses the mask, so either side works
+        if not self.lora_rank:
+            # .float(): the published DeBERTa-v3 weights are stored in 16-bit
+            # precision, and training all of them in 16 bits turns the loss into NaN.
+            self.encoder_ = AutoModel.from_pretrained(source).float().to(self.device_)
+            return
+        dtype = torch.float16 if self.device_ == "cuda" else torch.float32
+        try:  # the argument was renamed from torch_dtype to dtype in newer transformers
+            encoder = AutoModel.from_pretrained(source, dtype=dtype)
+        except TypeError:
+            encoder = AutoModel.from_pretrained(source, torch_dtype=dtype)
+        if self.keep_layers:
+            keep_first_layers(encoder, self.keep_layers)
+        trainable = add_lora(encoder, self.lora_rank, self.lora_alpha)
+        if self.gradient_checkpointing:
+            encoder.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
+        if self.verbose:
+            total = sum(p.numel() for p in encoder.parameters())
+            print(f"LoRA: training {trainable:,} of {total:,} weights", flush=True)
+        self.encoder_ = encoder.to(self.device_)
 
     def _autocast(self):
         import contextlib
@@ -166,7 +284,7 @@ class FineTunedEncoder:
     def fit(self, texts, y):
         import torch
         from torch import nn
-        from transformers import AutoModel, AutoTokenizer, get_cosine_schedule_with_warmup
+        from transformers import get_cosine_schedule_with_warmup
 
         texts = list(texts)
         y = np.asarray(y)
@@ -176,26 +294,24 @@ class FineTunedEncoder:
         torch.manual_seed(self.seed)
         rng = np.random.default_rng(self.seed)
         self.device_ = pick_device()
-        source = find_pretrained(self.pretrained)
-        self.tokenizer_ = AutoTokenizer.from_pretrained(source)
-        # .float(): the published DeBERTa-v3 weights are stored in 16-bit
-        # precision, and training in 16 bits turns the loss into NaN.
-        self.encoder_ = AutoModel.from_pretrained(source).float().to(self.device_)
+        self._load_network(find_pretrained(self.pretrained))
         self.dropout_ = nn.Dropout(0.1)
         self.head_ = nn.Linear(self.encoder_.config.hidden_size, len(self.classes_)).to(self.device_)
 
         # The new layer starts from random weights, so it gets a larger step
         # than the pretrained encoder.
+        # With LoRA only the corrections are trainable; the frozen weights are left out.
+        trainable = [p for p in self.encoder_.parameters() if p.requires_grad]
         optimizer = torch.optim.AdamW(
             [
-                {"params": self.encoder_.parameters(), "lr": self.lr},
+                {"params": trainable, "lr": self.lr},
                 {"params": self.head_.parameters(), "lr": self.lr * self.head_lr_factor},
             ],
             weight_decay=0.01,
         )
         steps = self.epochs * int(np.ceil(len(texts) / self.batch_size))
         schedule = get_cosine_schedule_with_warmup(optimizer, int(0.1 * steps), steps)
-        parameters = list(self.encoder_.parameters()) + list(self.head_.parameters())
+        parameters = trainable + list(self.head_.parameters())
         # 16-bit arithmetic needs the loss scaled up so small gradients survive.
         scaler = torch.amp.GradScaler("cuda", enabled=self.fast and self.device_ == "cuda")
         class_weights = None
@@ -250,11 +366,17 @@ class FineTunedEncoder:
 
         folder = Path(folder)
         folder.mkdir(parents=True, exist_ok=True)
-        self.encoder_.save_pretrained(folder)
-        self.tokenizer_.save_pretrained(folder)
+        if self.lora_rank:
+            # Only the LoRA weights: the frozen model is loaded again from its own input.
+            lora = {k: v for k, v in self.encoder_.state_dict().items() if ".lora_" in k}
+            torch.save(lora, folder / LORA_FILE)
+        else:
+            self.encoder_.save_pretrained(folder)
+            self.tokenizer_.save_pretrained(folder)
         torch.save(self.head_.state_dict(), folder / HEAD_FILE)
         settings = {"classes": self.classes_.tolist(), "batch_size": self.batch_size,
-                    "max_length": self.max_length, "fast": self.fast}  # fmt: skip
+                    "max_length": self.max_length, "fast": self.fast, "lora_rank": self.lora_rank,
+                    "lora_alpha": self.lora_alpha, "keep_layers": self.keep_layers}  # fmt: skip
         (folder / MARKER_FILE).write_text(json.dumps(settings))
         return folder
 
@@ -278,21 +400,35 @@ class FineTunedEncoder:
         return self.classes_[self.predict_proba(texts).argmax(axis=1)]
 
 
-def load_encoder(folder):
-    """A FineTunedEncoder saved with .save(), ready to predict."""
+def load_encoder(folder, base=None):
+    """A FineTunedEncoder saved with .save(), ready to predict.
+
+    A LoRA model also needs its frozen base model: `base`, or else the
+    language model attached as an input (src.features.llm.find_llm).
+    """
     import torch
     from torch import nn
-    from transformers import AutoModel, AutoTokenizer
 
     folder = Path(folder)
     settings = json.loads((folder / MARKER_FILE).read_text())
+    lora_rank = settings.get("lora_rank")
     model = FineTunedEncoder(
-        str(folder), batch_size=settings["batch_size"], max_length=settings["max_length"], fast=settings["fast"]
-    )
+        str(folder), batch_size=settings["batch_size"], max_length=settings["max_length"],
+        fast=settings["fast"], lora_rank=lora_rank, lora_alpha=settings.get("lora_alpha", 32),
+        keep_layers=settings.get("keep_layers"),
+    )  # fmt: skip
     model.classes_ = np.array(settings["classes"])
     model.device_ = pick_device()
-    model.tokenizer_ = AutoTokenizer.from_pretrained(folder)
-    model.encoder_ = AutoModel.from_pretrained(folder).float().to(model.device_)
+    if lora_rank:
+        from src.features.llm import find_llm
+
+        model._load_network(base or find_llm())
+        lora = torch.load(folder / LORA_FILE, map_location="cpu")
+        missing = set(lora) - set(model.encoder_.state_dict())
+        assert not missing, f"LoRA weights with no place in the base model: {sorted(missing)[:3]}"
+        model.encoder_.load_state_dict(lora, strict=False)
+    else:
+        model._load_network(folder)
     model.dropout_ = nn.Dropout(0.1)
     model.head_ = nn.Linear(model.encoder_.config.hidden_size, len(model.classes_))
     model.head_.load_state_dict(torch.load(folder / HEAD_FILE, map_location="cpu"))

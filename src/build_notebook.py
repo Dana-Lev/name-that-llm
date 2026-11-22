@@ -109,6 +109,17 @@ EXPERIMENTS = {
         'from src.pool_encoder import main\n\n'
         'main(name="deberta_pool_big", per_label=12000, epochs=3, balanced=True)',
     ),
+    # Needs a GPU session, Qwen 3 4B (Models: qwen-lm/qwen-3, transformers 4b) and the open
+    # pool dataset attached; not deberta-v3-base. One epoch over about 71,500 passages; the
+    # log prints the time left every 100 steps, and the run stops at 8 hours and still saves.
+    "train_qwen_lora_pool.ipynb": (
+        "Qwen 3 4B fine-tuned with LoRA on the public open pool",
+        "then fine-tune the first 18 layers of Qwen 3 4B with LoRA on up to 4,000 open-pool "
+        "passages per model (about 71,500), save the LoRA weights, and score it on "
+        "`train.csv`. This trains a model for later submissions: do not submit it.",
+        'from src.pool_encoder import build_pool_qwen_lora, main\n\n'
+        'main(name="qwen_lora_pool", build=build_pool_qwen_lora)',
+    ),
     # CPU is enough. Needs the open pool dataset attached (crtproduction/name-that-llm-open-pool).
     "experiment_open_pool.ipynb": (
         "training on the public open pool",

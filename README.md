@@ -107,7 +107,9 @@ open-pool passages (GPU, `deberta-v3-base` and the open pool attached), scores i
 `train_deberta_pool_long.ipynb` does the same with up to 8,000 passages per model (about 136,000)
 and 3 epochs, about 2.5 hours. `train_deberta_pool_big.ipynb` uses up to 12,000 per model (about
 192,000), with the loss weighted so the two models with under 5,000 pool passages count as much as
-the rest; about 3.2 hours. A submission notebook loads whichever one is attached, and
+the rest; about 3.2 hours. `train_qwen_lora_pool.ipynb` fine-tunes the first 18 layers of Qwen 3 4B
+with LoRA (rank 16 on every linear layer, written in `src/models/transformer.py`) on about 71,500
+pool passages; it needs Qwen 3 4B and the open pool attached and saves only the LoRA weights. A submission notebook loads whichever one is attached, and
 stops if more than one is.
 
 `python -m src.predict --model tfidf_style_blend --assign` does the

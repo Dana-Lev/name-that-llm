@@ -15,7 +15,8 @@ train.csv's prompts). Outputs:
   choosing blend weights locally.
 - <name>.csv: the score.
 
-`name` is deberta_pool by default.
+`name` is deberta_pool by default. build=build_pool_qwen_lora trains a LoRA
+on Qwen 3 4B instead (attach Qwen 3 instead of deberta-v3-base).
 """
 
 import time
@@ -47,14 +48,44 @@ def build_pool_encoder(**kwargs):
     return FineTunedEncoder("microsoft/deberta-v3-base", **settings)
 
 
-def main(out_dir=".", per_label=PER_LABEL, matched=True, name="deberta_pool", **encoder_settings):
+def build_pool_qwen_lora(**kwargs):
+    """Qwen 3 4B, first 18 of its 36 layers, with a rank-16 LoRA on every linear layer.
+
+    One epoch: each step costs far more than with DeBERTa. The loss and the
+    time left are printed every 100 steps; if the run would pass
+    time_limit_hours it stops there and still saves.
+    """
+    from src.features.llm import find_llm
+
+    settings = dict(
+        epochs=1,
+        lr=2e-4,
+        head_lr_factor=5,
+        batch_size=16,
+        max_length=384,
+        fast=True,
+        verbose=True,
+        progress_every=100,
+        time_limit_hours=8,
+        balanced=True,
+        lora_rank=16,
+        lora_alpha=32,
+        keep_layers=18,
+        gradient_checkpointing=True,
+    )
+    settings.update(kwargs)
+    pretrained = settings.pop("pretrained", None) or find_llm()
+    return FineTunedEncoder(pretrained, **settings)
+
+
+def main(out_dir=".", per_label=PER_LABEL, matched=True, name="deberta_pool", build=None, **encoder_settings):
     out_dir = Path(out_dir)
     df = load_train(find_data_dir())
     sample = sample_pool(load_pool(), per_label, matched)
     print(f"training on {len(sample)} pool passages; testing on {len(df)} train.csv passages", flush=True)
 
     started = time.time()
-    model = build_pool_encoder(**encoder_settings).fit(sample["text"], sample["label"])
+    model = (build or build_pool_encoder)(**encoder_settings).fit(sample["text"], sample["label"])
     minutes = (time.time() - started) / 60
     model.save(out_dir / name)  # before scoring, so the weights survive a later error
     print(f"trained in {minutes:.0f} min; saved to {out_dir / name}", flush=True)

@@ -65,7 +65,7 @@ fold, saves out-of-fold probabilities to `oof/`, and appends rows to `experiment
 | DeBERTa trained longer on the open pool only (scored on all of train.csv) | 0.541 | | |
 | Pool TF-IDF + style + longer pool DeBERTa + Qwen features | 0.578 | | 0.574 |
 | DeBERTa on 194,000 pool passages, loss weighted per model (scored on all of train.csv) | 0.542 | | |
-| Pool TF-IDF + style + both pool DeBERTas + Qwen features | 0.592 | | |
+| Pool TF-IDF + style + both pool DeBERTas + Qwen features | 0.592 | | 0.581 |
 
 Balanced accuracy, mean of 5 prompt-grouped folds; the standard deviation across folds is 0.01–0.03.
 Random guessing scores 0.056.

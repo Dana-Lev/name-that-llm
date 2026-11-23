@@ -117,6 +117,15 @@ def build_pool_qwen_lora_blend(
     )
 
 
+def build_pool_qwen_lora_light_blend():
+    """The 0.581 two-DeBERTa blend unchanged, plus the LoRA Qwen at weight 0.5
+    (0.599 on train.csv). At weight 1.5, with the longer DeBERTa halved, the
+    blend scored 0.609 on train.csv but 0.570 on the board, while the LoRA Qwen
+    alone held up (0.547 and 0.537). This checks whether a light touch helps.
+    """
+    return build_pool_qwen_lora_blend(long_weight=1.0, lora_weight=0.5)
+
+
 MODELS = {
     "tfidf_logreg": build_tfidf_logreg,
     "style_logreg": build_style_logreg,
@@ -133,6 +142,7 @@ MODELS = {
     "pool_two_deberta_blend": build_pool_two_deberta_blend,
     "pool_qwen_lora_blend": build_pool_qwen_lora_blend,
     "qwen_lora_pool": load_qwen_lora_pool,
+    "pool_qwen_lora_light_blend": build_pool_qwen_lora_light_blend,
 }
 
 # Kaggle inputs each model needs besides the competition data (see
@@ -154,6 +164,9 @@ INPUTS = {
         "pool", "llm", "encoder:deberta_pool_long", "encoder:deberta_pool_big", "encoder:qwen_lora_pool",
     ),
     "qwen_lora_pool": ("llm", "encoder:qwen_lora_pool"),
+    "pool_qwen_lora_light_blend": (
+        "pool", "llm", "encoder:deberta_pool_long", "encoder:deberta_pool_big", "encoder:qwen_lora_pool",
+    ),
 }
 
 # Models too heavy for a quick test: they fine-tune or run a pretrained
@@ -171,4 +184,5 @@ NEURAL = {
     "pool_two_deberta_blend",
     "pool_qwen_lora_blend",
     "qwen_lora_pool",
+    "pool_qwen_lora_light_blend",
 }

@@ -85,6 +85,11 @@ NOTEBOOKS = {
     # A probe, not a contender: the LoRA-tuned Qwen alone (0.547 on train.csv), to see whether
     # it holds up on the test prompts. Needs a GPU session, Qwen 3 4B and the output of
     # ntl-train-qwen-lora-pool attached; about 10 minutes.
+    # The 0.581 blend plus the LoRA Qwen at weight 0.5; the same inputs as the blend above.
+    "submission_pool_qwen_lora_light_blend.ipynb": (
+        "the two-DeBERTa blend with the LoRA-tuned Qwen at a low weight",
+        {"model": "pool_qwen_lora_light_blend", "assign": False},
+    ),
     "submission_qwen_lora.ipynb": (
         "the LoRA-tuned Qwen alone",
         {"model": "qwen_lora_pool", "assign": False},

@@ -132,6 +132,7 @@ MODELS = {
     "pool_deberta_blend": build_pool_deberta_blend,
     "pool_two_deberta_blend": build_pool_two_deberta_blend,
     "pool_qwen_lora_blend": build_pool_qwen_lora_blend,
+    "qwen_lora_pool": load_qwen_lora_pool,
 }
 
 # Kaggle inputs each model needs besides the competition data (see
@@ -152,6 +153,7 @@ INPUTS = {
     "pool_qwen_lora_blend": (
         "pool", "llm", "encoder:deberta_pool_long", "encoder:deberta_pool_big", "encoder:qwen_lora_pool",
     ),
+    "qwen_lora_pool": ("llm", "encoder:qwen_lora_pool"),
 }
 
 # Models too heavy for a quick test: they fine-tune or run a pretrained
@@ -168,4 +170,5 @@ NEURAL = {
     "pool_deberta_blend",
     "pool_two_deberta_blend",
     "pool_qwen_lora_blend",
+    "qwen_lora_pool",
 }

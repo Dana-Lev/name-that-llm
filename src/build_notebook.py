@@ -82,6 +82,13 @@ NOTEBOOKS = {
         "and language-model features",
         {"model": "pool_qwen_lora_blend", "assign": False},
     ),
+    # A probe, not a contender: the LoRA-tuned Qwen alone (0.547 on train.csv), to see whether
+    # it holds up on the test prompts. Needs a GPU session, Qwen 3 4B and the output of
+    # ntl-train-qwen-lora-pool attached; about 10 minutes.
+    "submission_qwen_lora.ipynb": (
+        "the LoRA-tuned Qwen alone",
+        {"model": "qwen_lora_pool", "assign": False},
+    ),
 }
 
 # Notebooks that run an experiment instead of writing a submission:

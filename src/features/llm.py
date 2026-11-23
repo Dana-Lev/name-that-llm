@@ -67,6 +67,14 @@ def _load(source):
     return _loaded[source]
 
 
+def unload():
+    """Drop the loaded language models and free their GPU memory."""
+    from src.models.transformer import free_gpu
+
+    _loaded.clear()
+    free_gpu()
+
+
 def pick_layers(n_layers):
     return sorted({n_layers // 4, n_layers // 2, 3 * n_layers // 4, n_layers})
 
@@ -133,5 +141,8 @@ def early_layer_features(texts):
     middle or last layers (Qwen 3 4B: 0.379 against 0.336 and 0.316).
     """
     features = extract(texts, stats=False, verbose=False)
+    # Freed after each use (fit, then predict) so another large model, such
+    # as the LoRA-tuned Qwen, has the GPU to itself.
+    unload()
     first_layer = min((name for name in features if name != "stats"), key=lambda name: int(name[1:]))
     return features[first_layer]

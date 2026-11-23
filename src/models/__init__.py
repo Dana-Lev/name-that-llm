@@ -90,6 +90,33 @@ def build_pool_two_deberta_blend(style_weight=0.5, long_weight=1.0, big_weight=1
     )
 
 
+def load_qwen_lora_pool():
+    """Qwen 3 4B, first 18 layers, LoRA-tuned on 71,500 pool passages
+    (train_qwen_lora_pool.ipynb). Loads on top of the attached Qwen 3 4B."""
+    return SavedEncoder("qwen_lora_pool")
+
+
+def build_pool_qwen_lora_blend(
+    style_weight=0.5, long_weight=0.5, big_weight=1.0, llm_weight=0.5, lora_weight=1.5
+):
+    """The two-DeBERTa blend plus the LoRA-tuned Qwen, our best single model
+    (0.547 on train.csv). Adding it at weight 1.5 lifts the blend from 0.592
+    to 0.604; halving the longer DeBERTa, which errs much like the big one,
+    gives 0.609 (src.blend_oof). Needs the outputs of three training
+    notebooks attached.
+    """
+    return LogProbBlend(
+        [
+            (build_pool_tfidf_logreg, 1.0),
+            (build_style_logreg, style_weight),
+            (load_deberta_pool_long, long_weight),
+            (load_deberta_pool_big, big_weight),
+            (load_qwen_lora_pool, lora_weight),
+            (build_llm_logreg, llm_weight),
+        ]
+    )
+
+
 MODELS = {
     "tfidf_logreg": build_tfidf_logreg,
     "style_logreg": build_style_logreg,
@@ -104,6 +131,7 @@ MODELS = {
     "deberta_pool": SavedEncoder,
     "pool_deberta_blend": build_pool_deberta_blend,
     "pool_two_deberta_blend": build_pool_two_deberta_blend,
+    "pool_qwen_lora_blend": build_pool_qwen_lora_blend,
 }
 
 # Kaggle inputs each model needs besides the competition data (see
@@ -121,6 +149,9 @@ INPUTS = {
     "deberta_pool": ("encoder",),
     "pool_deberta_blend": ("pool", "llm", "encoder"),
     "pool_two_deberta_blend": ("pool", "llm", "encoder:deberta_pool_long", "encoder:deberta_pool_big"),
+    "pool_qwen_lora_blend": (
+        "pool", "llm", "encoder:deberta_pool_long", "encoder:deberta_pool_big", "encoder:qwen_lora_pool",
+    ),
 }
 
 # Models too heavy for a quick test: they fine-tune or run a pretrained
@@ -136,4 +167,5 @@ NEURAL = {
     "deberta_pool",
     "pool_deberta_blend",
     "pool_two_deberta_blend",
+    "pool_qwen_lora_blend",
 }

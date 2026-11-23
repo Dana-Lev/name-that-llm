@@ -76,6 +76,12 @@ NOTEBOOKS = {
         "TF-IDF and two DeBERTas trained on the public open pool, with style and language-model features",
         {"model": "pool_two_deberta_blend", "assign": False},
     ),
+    # As above, plus the output of ntl-train-qwen-lora-pool attached.
+    "submission_pool_qwen_lora_blend.ipynb": (
+        "TF-IDF, two DeBERTas and a LoRA-tuned Qwen trained on the public open pool, with style "
+        "and language-model features",
+        {"model": "pool_qwen_lora_blend", "assign": False},
+    ),
 }
 
 # Notebooks that run an experiment instead of writing a submission:

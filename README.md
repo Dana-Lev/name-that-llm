@@ -66,6 +66,8 @@ fold, saves out-of-fold probabilities to `oof/`, and appends rows to `experiment
 | Pool TF-IDF + style + longer pool DeBERTa + Qwen features | 0.578 | | 0.574 |
 | DeBERTa on 194,000 pool passages, loss weighted per model (scored on all of train.csv) | 0.542 | | |
 | Pool TF-IDF + style + both pool DeBERTas + Qwen features | 0.592 | | 0.581 |
+| Qwen 3 4B, first 18 layers, LoRA-tuned on the open pool only (scored on all of train.csv) | 0.547 | | |
+| Pool TF-IDF + style + both pool DeBERTas + LoRA Qwen + Qwen features | 0.609 | | |
 
 Balanced accuracy, mean of 5 prompt-grouped folds; the standard deviation across folds is 0.01–0.03.
 Random guessing scores 0.056.
@@ -95,6 +97,7 @@ python -m src.build_notebook                        # rewrites the notebooks in 
 | `submission_pool_blend.ipynb` | All four models, TF-IDF trained on the open pool too. Needs a GPU session, `deberta-v3-base`, Qwen 3 4B and the open pool dataset attached |
 | `submission_pool_deberta_blend.ipynb` | TF-IDF and DeBERTa trained on the open pool, plus style and Qwen features. Needs a GPU session, Qwen 3 4B, the open pool dataset and the output of `ntl-train-deberta-pool` attached |
 | `submission_pool_two_deberta_blend.ipynb` | As above with both the longer and the big pool DeBERTa. Needs a GPU session, Qwen 3 4B, the open pool dataset and the outputs of `ntl-train-deberta-pool-long` and `ntl-train-deberta-pool-big` attached |
+| `submission_pool_qwen_lora_blend.ipynb` | As above plus the LoRA-tuned Qwen. Also needs the output of `ntl-train-qwen-lora-pool` attached |
 | `submission_full_blend.ipynb` | All four models. Needs a GPU session, `deberta-v3-base` and Qwen 3 4B attached |
 | `submission_deberta_blend.ipynb` | Blend with fine-tuned DeBERTa. Needs a GPU session and `deberta-v3-base` attached as an input |
 
@@ -109,8 +112,10 @@ and 3 epochs, about 2.5 hours. `train_deberta_pool_big.ipynb` uses up to 12,000 
 192,000), with the loss weighted so the two models with under 5,000 pool passages count as much as
 the rest; about 3.2 hours. `train_qwen_lora_pool.ipynb` fine-tunes the first 18 layers of Qwen 3 4B
 with LoRA (rank 16 on every linear layer, written in `src/models/transformer.py`) on about 71,500
-pool passages; it needs Qwen 3 4B and the open pool attached and saves only the LoRA weights. A submission notebook loads whichever one is attached, and
-stops if more than one is.
+pool passages in 3.7 hours; it needs Qwen 3 4B and the open pool attached and saves only the LoRA
+weights, which a submission loads on top of the attached Qwen 3 4B. A submission notebook loads
+each trained model by the name of its output folder, loads it only while it predicts, and stops if
+one it needs is missing.
 
 `python -m src.predict --model tfidf_style_blend --assign` does the
 same locally.

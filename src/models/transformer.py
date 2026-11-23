@@ -400,6 +400,17 @@ class FineTunedEncoder:
         return self.classes_[self.predict_proba(texts).argmax(axis=1)]
 
 
+def free_gpu():
+    """Return the memory of models no longer referenced to the GPU."""
+    import gc
+
+    import torch
+
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+
 def load_encoder(folder, base=None):
     """A FineTunedEncoder saved with .save(), ready to predict.
 
@@ -478,12 +489,20 @@ class SavedEncoder:
         self.name = name
 
     def fit(self, texts, y):
-        self.model_ = load_encoder(find_saved_encoder(name=self.name))
-        self.classes_ = self.model_.classes_
+        self.folder_ = find_saved_encoder(name=self.name)
+        settings = json.loads((self.folder_ / MARKER_FILE).read_text())
+        self.classes_ = np.array(settings["classes"])
         return self
 
     def predict_proba(self, texts):
-        return self.model_.predict_proba(texts)
+        # Loaded only while it predicts, then freed: a submission can use
+        # several large models (two Qwen 3 4B among them), and a T4 has 15 GB.
+        model = load_encoder(self.folder_)
+        try:
+            return model.predict_proba(texts)
+        finally:
+            del model
+            free_gpu()
 
     def predict(self, texts):
         return self.classes_[self.predict_proba(texts).argmax(axis=1)]

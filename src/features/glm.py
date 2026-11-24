@@ -83,13 +83,14 @@ def _prepare(model, work):
     return binary, segments
 
 
-def score(texts, model, out_dir, work="/tmp/ntl", ids=None, deadline_s=0):
+def score(texts, model, out_dir, work="/tmp/ntl", ids=None, deadline_s=0, budget_s=0):
     """Likelihood features of each passage under `model`, as a DataFrame in input order.
 
     One row per passage: mean, spread and quantiles of the log-probability of
     each token, the model's entropy, the rank of the actual token, and the
     Fast-DetectGPT curvature (src/segrun/features.py). Passages the run did
-    not reach (deadline) are missing from the result.
+    not reach (deadline) are missing from the result. With `budget_s`, a run
+    projected to take longer stops early with an error and writes nothing.
     """
     texts = list(texts)
     ids = [str(i) for i in (range(len(texts)) if ids is None else ids)]
@@ -107,7 +108,7 @@ def score(texts, model, out_dir, work="/tmp/ntl", ids=None, deadline_s=0):
         sys.executable, str(PIPELINE), "--bin", str(binary), "--segs", str(segments / "*.gguf"),
         "--csv", str(csv), "--out", str(out_dir), "--tag", model, "--work", str(work / "state"),
         "--prefix", PREFIX, "--max-text-tokens", str(MAX_TEXT_TOKENS), "--seq-batch", "8",
-        "--deadline-s", str(deadline_s),
+        "--deadline-s", str(deadline_s), "--budget-s", str(max(budget_s, 0)),
     ]  # fmt: skip
     print("$", " ".join(command), flush=True)
     subprocess.run(command, env=env, check=True)

@@ -27,6 +27,7 @@ SOURCES = [
     "src/models/transformer.py",
     "src/pool.py",
     "src/models/pool_model.py",
+    "src/models/glm_model.py",
     "src/models/__init__.py",
     "src/prompts.py",
     "src/predict.py",
@@ -86,6 +87,13 @@ NOTEBOOKS = {
         "TF-IDF, two DeBERTas and a LoRA-tuned Qwen trained on the public open pool, with style "
         "and language-model features",
         {"model": "pool_qwen_lora_blend", "assign": False},
+    ),
+    # The 0.581 blend plus GLM likelihood on the passages it flags. Needs GPU T4 x2 and, attached:
+    # the inputs of the 0.581 blend, the output of ntl-train-glm-likelihood (the train features),
+    # the output of estopadilla/ntl-glm-likelihood-train (ntl-segrun) and the three segment datasets.
+    "submission_pool_glm_blend.ipynb": (
+        "the two-DeBERTa blend plus GLM-5.3 likelihood",
+        {"model": "pool_glm_blend", "assign": False},
     ),
     # A probe, not a contender: the LoRA-tuned Qwen alone (0.547 on train.csv), to see whether
     # it holds up on the test prompts. Needs a GPU session, Qwen 3 4B and the output of

@@ -33,11 +33,18 @@ def find_inputs(model):
     A missing input then fails in seconds with a clear message, instead of
     an hour into the run (or invisibly, in the rerun on the hidden test).
     """
+    from src.features.glm import find_segments, find_segrun
     from src.features.llm import find_llm
+    from src.models.glm_model import find_glm_train
     from src.models.transformer import find_pretrained, find_saved_encoder
     from src.pool import find_pool
 
-    finders = {"pool": find_pool, "llm": find_llm, "deberta": find_pretrained, "encoder": find_saved_encoder}
+    finders = {
+        "pool": find_pool, "llm": find_llm, "deberta": find_pretrained, "encoder": find_saved_encoder,
+        "segrun": find_segrun,
+        "glm_segments": lambda name: f"{len(find_segments(name))} segment files",
+        "glm_train": lambda name: find_glm_train(name),
+    }  # fmt: skip
     for need in INPUTS.get(model, ()):
         kind, _, name = need.partition(":")  # "encoder:deberta_pool_big" names one encoder
         path = finders[kind](name=name) if name else finders[kind]()

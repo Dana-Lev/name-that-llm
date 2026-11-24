@@ -1,6 +1,7 @@
 """Every model that can be cross-validated or submitted, by name."""
 
 from src.models.blend import LogProbBlend
+from src.models.glm_model import GatedGLMBlend
 from src.models.linear import build_llm_logreg, build_style_logreg, build_tfidf_logreg
 from src.models.pool_model import build_pool_tfidf_logreg
 from src.models.transformer import SavedEncoder, build_deberta_base, build_deberta_small
@@ -126,6 +127,16 @@ def build_pool_qwen_lora_light_blend():
     return build_pool_qwen_lora_blend(long_weight=1.0, lora_weight=0.5)
 
 
+def build_pool_glm_blend():
+    """The 0.581 two-DeBERTa blend, then the GLM likelihood on the 30% of test
+    passages it thinks most likely GLM's (src/models/glm_model.py): 0.626 on
+    train.csv against 0.592. Needs, besides that blend's inputs, the output of
+    ntl-train-glm-likelihood, the output of estopadilla/ntl-glm-likelihood-train
+    and the three GLM segment datasets, on GPU T4 x2.
+    """
+    return GatedGLMBlend(build_pool_two_deberta_blend)
+
+
 MODELS = {
     "tfidf_logreg": build_tfidf_logreg,
     "style_logreg": build_style_logreg,
@@ -143,6 +154,7 @@ MODELS = {
     "pool_qwen_lora_blend": build_pool_qwen_lora_blend,
     "qwen_lora_pool": load_qwen_lora_pool,
     "pool_qwen_lora_light_blend": build_pool_qwen_lora_light_blend,
+    "pool_glm_blend": build_pool_glm_blend,
 }
 
 # Kaggle inputs each model needs besides the competition data (see
@@ -167,6 +179,10 @@ INPUTS = {
     "pool_qwen_lora_light_blend": (
         "pool", "llm", "encoder:deberta_pool_long", "encoder:deberta_pool_big", "encoder:qwen_lora_pool",
     ),
+    "pool_glm_blend": (
+        "pool", "llm", "encoder:deberta_pool_long", "encoder:deberta_pool_big", "segrun",
+        "glm_segments:glm53_flash", "glm_segments:glm53", "glm_train:glm53_flash", "glm_train:glm53",
+    ),
 }
 
 # Models too heavy for a quick test: they fine-tune or run a pretrained
@@ -185,4 +201,5 @@ NEURAL = {
     "pool_qwen_lora_blend",
     "qwen_lora_pool",
     "pool_qwen_lora_light_blend",
+    "pool_glm_blend",
 }

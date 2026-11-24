@@ -121,8 +121,27 @@ weights, which a submission loads on top of the attached Qwen 3 4B. A submission
 each trained model by the name of its output folder, loads it only while it predicts, and stops if
 one it needs is missing.
 
+`train_glm_likelihood.ipynb` scores every `train.csv` passage under two of the 18 models
+themselves, GLM-5.3-Flash and GLM-5.3, and cross-validates a classifier on the result
+(`src/features/glm.py`, `src/glm_experiment.py`). A model gives its own text higher probability,
+and the two GLM labels are our weakest (recall 0.20 and 0.37). The open weights (118 GB for Flash
+alone) do not fit on Kaggle's GPUs, so they run one layer segment at a time with José Padilla's
+`ntl-segrun`, a patched llama.cpp (see Credits). It needs GPU T4 x2 and, attached, the output of
+his notebook and the three segment datasets; about an hour.
+
 `python -m src.predict --model tfidf_style_blend --assign` does the
 same locally.
+
+## Credits
+
+- Open pool: [crtproduction/name-that-llm-open-pool](https://www.kaggle.com/datasets/crtproduction/name-that-llm-open-pool) (CC BY-SA 4.0) and its 66 source datasets.
+- GLM likelihood: `ntl-segrun` and its driver scripts, by José Padilla, from the public competition
+  notebook [estopadilla/ntl-glm-likelihood-train](https://www.kaggle.com/code/estopadilla/ntl-glm-likelihood-train).
+  `src/segrun/` holds three of his scripts unchanged; we use the compiled program from that
+  notebook's output. Publicly shared competition code is open-source licensed under section 6b of the
+  competition rules. Built on [llama.cpp](https://github.com/ggml-org/llama.cpp) (MIT).
+- GLM segment files: [jamesliebel/glm53-flash-iq3xxs-segs-mirror](https://www.kaggle.com/datasets/jamesliebel/glm53-flash-iq3xxs-segs-mirror)
+  and the two GLM-5.3 mirrors, copies of jinghengwu's quantized segments of Z.ai's open weights (MIT).
 
 ## Validation
 

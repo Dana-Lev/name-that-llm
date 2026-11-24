@@ -33,6 +33,11 @@ SOURCES = [
     "src/llm_experiment.py",
     "src/pool_experiment.py",
     "src/pool_encoder.py",
+    "src/segrun/segio.py",
+    "src/segrun/features.py",
+    "src/segrun/run_pipeline.py",
+    "src/features/glm.py",
+    "src/glm_experiment.py",
 ]
 
 # notebook file name -> (title, arguments of make_submission)
@@ -137,6 +142,19 @@ EXPERIMENTS = {
         "`train.csv`. This trains a model for later submissions: do not submit it.",
         'from src.pool_encoder import build_pool_qwen_lora, main\n\n'
         'main(name="qwen_lora_pool", build=build_pool_qwen_lora)',
+    ),
+    # Needs GPU T4 x2 and, attached: the output of the public notebook
+    # estopadilla/ntl-glm-likelihood-train (the compiled ntl-segrun) and the segment datasets
+    # jamesliebel/glm53-flash-iq3xxs-segs-mirror, glm53-iq3xxs-segs-a-mirror and -b-mirror.
+    # About an hour. Its output (the train features) is an input of a later submission.
+    "train_glm_likelihood.ipynb": (
+        "likelihood under GLM-5.3-Flash and GLM-5.3",
+        "then score every `train.csv` passage under GLM-5.3-Flash and GLM-5.3 with José Padilla's "
+        "public `ntl-segrun` (a llama.cpp patch that runs the models one layer segment at a time), "
+        "save the features and cross-validate a classifier on them. This is an experiment: do not "
+        "submit it.",
+        "from src.glm_experiment import main\n\ntable = main()\n"
+        'table.sort_values("cv_mean", ascending=False)',
     ),
     # CPU is enough. Needs the open pool dataset attached (crtproduction/name-that-llm-open-pool).
     "experiment_open_pool.ipynb": (

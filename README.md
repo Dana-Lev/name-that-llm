@@ -69,7 +69,7 @@ fold, saves out-of-fold probabilities to `oof/`, and appends rows to `experiment
 | Qwen 3 4B, first 18 layers, LoRA-tuned on the open pool only (scored on all of train.csv) | 0.547 | | |
 | LoRA Qwen alone, submitted | | | 0.537 |
 | Pool TF-IDF + style + both pool DeBERTas + LoRA Qwen + Qwen features | 0.609 | | 0.570 |
-| As the 0.581 blend, plus LoRA Qwen at weight 0.5 | 0.599 | | |
+| As the 0.581 blend, plus LoRA Qwen at weight 0.5 | 0.599 | | 0.579 |
 
 Balanced accuracy, mean of 5 prompt-grouped folds; the standard deviation across folds is 0.01–0.03.
 Random guessing scores 0.056.

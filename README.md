@@ -132,6 +132,13 @@ alone) do not fit on Kaggle's GPUs, so they run one layer segment at a time with
 `ntl-segrun`, a patched llama.cpp (see Credits). It needs GPU T4 x2 and, attached, the output of
 his notebook and the three segment datasets; about an hour.
 
+`train_family_specialists.ipynb` trains, for each maker (GPT, Gemini, Claude), a DeBERTa and TF-IDF and
+style models on open-pool passages of that maker's models only (`src/family_experiment.py`). Most of
+the GLM blend's errors are within a family: on `train.csv` it splits a GPT passage among the five GPT
+models correctly 0.649 of the time, and if it always did, the blend would score 0.717 instead of
+0.626. `src/models/family_model.py` keeps the blend's total for the family and re-splits it with the
+specialist's opinion. GPU, `deberta-v3-base` and the open pool attached; it saves the DeBERTas.
+
 `python -m src.predict --model tfidf_style_blend --assign` does the
 same locally.
 

@@ -34,6 +34,8 @@ SOURCES = [
     "src/llm_experiment.py",
     "src/pool_experiment.py",
     "src/pool_encoder.py",
+    "src/models/family_model.py",
+    "src/family_experiment.py",
     "src/segrun/segio.py",
     "src/segrun/features.py",
     "src/segrun/run_pipeline.py",
@@ -163,6 +165,16 @@ EXPERIMENTS = {
         "submit it.",
         "from src.glm_experiment import main\n\ntable = main()\n"
         'table.sort_values("cv_mean", ascending=False)',
+    ),
+    # Needs a GPU session, deberta-v3-base and the open pool attached. Trains three DeBERTa
+    # family specialists (about 1.5 hours) and their TF-IDF and style counterparts. Its output
+    # (the saved specialists) is an input of a later submission.
+    "train_family_specialists.ipynb": (
+        "family specialists trained on the public open pool",
+        "then train, for the GPT, Gemini and Claude families, a DeBERTa and TF-IDF and style "
+        "models on open-pool passages of that family only, save the DeBERTas and score all on "
+        "`train.csv`. This trains models for later submissions: do not submit it.",
+        "from src.family_experiment import main\n\ntable = main()\ntable",
     ),
     # CPU is enough. Needs the open pool dataset attached (crtproduction/name-that-llm-open-pool).
     "experiment_open_pool.ipynb": (

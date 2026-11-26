@@ -22,3 +22,4 @@ date,owner,name,git_commit,cv_mean,cv_std,public_lb,notes
 2026-11-24,Dana,glm_likelihood,ac9caf7,0.2271,0.0098,,GLM-5.3-Flash + GLM-5.3 likelihood features (ntl-segrun) alone; logreg C=0.1
 2026-11-24,Dana,pool_glm_blend,ac9caf7,0.6261,0.0153,0.606,0.581 blend + 1.5 x GLM logreg on the 30% of passages with most GLM probability
 2026-11-26,Dana,pool_glm_family_blend,1c9b467,0.6265,,,GLM blend + GPT/Gemini/Claude pool specialists re-splitting each family; weights chosen on 4 folds and scored on the 5th (nested): +0.0004 over 0.6261; best weights in hindsight 0.6346
+2026-11-26,Dana,pool_glm_balanced_blend,ef0c118,0.6468,0.0216,,GLM blend with label-free per-model offsets balancing the mean predicted probability over each held-out fold (src/models/balance.py); assumes a balanced test set

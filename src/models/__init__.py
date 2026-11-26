@@ -1,5 +1,6 @@
 """Every model that can be cross-validated or submitted, by name."""
 
+from src.models.balance import Balanced
 from src.models.blend import LogProbBlend
 from src.models.glm_model import GatedGLMBlend
 from src.models.linear import build_llm_logreg, build_style_logreg, build_tfidf_logreg
@@ -137,6 +138,15 @@ def build_pool_glm_blend():
     return GatedGLMBlend(build_pool_two_deberta_blend)
 
 
+def build_pool_glm_balanced_blend():
+    """The GLM blend with its test predictions balanced over the 18 models
+    (src/models/balance.py): 0.647 on train.csv against 0.626, if the test set,
+    like train.csv, has about as many passages of each model. Same inputs as
+    pool_glm_blend.
+    """
+    return Balanced(build_pool_glm_blend)
+
+
 MODELS = {
     "tfidf_logreg": build_tfidf_logreg,
     "style_logreg": build_style_logreg,
@@ -155,6 +165,7 @@ MODELS = {
     "qwen_lora_pool": load_qwen_lora_pool,
     "pool_qwen_lora_light_blend": build_pool_qwen_lora_light_blend,
     "pool_glm_blend": build_pool_glm_blend,
+    "pool_glm_balanced_blend": build_pool_glm_balanced_blend,
 }
 
 # Kaggle inputs each model needs besides the competition data (see
@@ -184,6 +195,7 @@ INPUTS = {
         "glm_segments:glm53_flash", "glm_segments:glm53", "glm_train:glm53_flash", "glm_train:glm53",
     ),
 }
+INPUTS["pool_glm_balanced_blend"] = INPUTS["pool_glm_blend"]
 
 # Models too heavy for a quick test: they fine-tune or run a pretrained
 # network, or train on the open pool. Run them on Kaggle.
@@ -202,4 +214,5 @@ NEURAL = {
     "qwen_lora_pool",
     "pool_qwen_lora_light_blend",
     "pool_glm_blend",
+    "pool_glm_balanced_blend",
 }

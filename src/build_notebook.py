@@ -24,6 +24,7 @@ SOURCES = [
     "src/features/llm.py",
     "src/models/linear.py",
     "src/models/blend.py",
+    "src/models/balance.py",
     "src/models/transformer.py",
     "src/pool.py",
     "src/models/pool_model.py",
@@ -96,6 +97,11 @@ NOTEBOOKS = {
     "submission_pool_glm_blend.ipynb": (
         "the two-DeBERTa blend plus GLM-5.3 likelihood",
         {"model": "pool_glm_blend", "assign": False},
+    ),
+    # The GLM blend with its test predictions balanced over the 18 models; the same inputs.
+    "submission_pool_glm_balanced_blend.ipynb": (
+        "the GLM blend, balanced over the 18 models",
+        {"model": "pool_glm_balanced_blend", "assign": False},
     ),
     # A probe, not a contender: the LoRA-tuned Qwen alone (0.547 on train.csv), to see whether
     # it holds up on the test prompts. Needs a GPU session, Qwen 3 4B and the output of

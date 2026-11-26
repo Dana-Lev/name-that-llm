@@ -73,6 +73,7 @@ fold, saves out-of-fold probabilities to `oof/`, and appends rows to `experiment
 | Likelihood under GLM-5.3-Flash and GLM-5.3 only (glm-5.3 recall 0.62, glm-5.3-flash 0.59) | 0.227 | | |
 | The 0.581 blend, plus GLM likelihood on the 30% of passages it finds most GLM-like | 0.626 | | 0.606 |
 | As above, plus family specialists re-splitting GPT, Gemini and Claude (weights chosen on the other 4 folds) | 0.627 | | |
+| The GLM blend, its predictions balanced over the 18 models without labels, fold by fold | 0.647 | | |
 
 Balanced accuracy, mean of 5 prompt-grouped folds; the standard deviation across folds is 0.01–0.03.
 Random guessing scores 0.056.
@@ -105,6 +106,7 @@ python -m src.build_notebook                        # rewrites the notebooks in 
 | `submission_pool_qwen_lora_blend.ipynb` | As above plus the LoRA-tuned Qwen. Also needs the output of `ntl-train-qwen-lora-pool` attached |
 | `submission_pool_qwen_lora_light_blend.ipynb` | The 0.581 blend plus the LoRA-tuned Qwen at weight 0.5. Same inputs as the row above |
 | `submission_pool_glm_blend.ipynb` | The 0.581 blend, then GLM likelihood on the 30% of test passages it finds most GLM-like. Needs GPU T4 x2 and, besides the 0.581 blend's inputs, the outputs of `ntl-train-glm-likelihood` and `estopadilla/ntl-glm-likelihood-train` and the three GLM segment datasets |
+| `submission_pool_glm_balanced_blend.ipynb` | The GLM blend with its test predictions balanced so every model gets the same average probability (`src/models/balance.py`); assumes the test set, like `train.csv`, has about as many passages of each model. Same inputs as the row above |
 | `submission_qwen_lora.ipynb` | The LoRA-tuned Qwen alone, to check it on the test prompts. Needs a GPU session, Qwen 3 4B and the output of `ntl-train-qwen-lora-pool` attached |
 | `submission_full_blend.ipynb` | All four models. Needs a GPU session, `deberta-v3-base` and Qwen 3 4B attached |
 | `submission_deberta_blend.ipynb` | Blend with fine-tuned DeBERTa. Needs a GPU session and `deberta-v3-base` attached as an input |

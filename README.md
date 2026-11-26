@@ -72,6 +72,7 @@ fold, saves out-of-fold probabilities to `oof/`, and appends rows to `experiment
 | As the 0.581 blend, plus LoRA Qwen at weight 0.5 | 0.599 | | 0.579 |
 | Likelihood under GLM-5.3-Flash and GLM-5.3 only (glm-5.3 recall 0.62, glm-5.3-flash 0.59) | 0.227 | | |
 | The 0.581 blend, plus GLM likelihood on the 30% of passages it finds most GLM-like | 0.626 | | 0.606 |
+| As above, plus family specialists re-splitting GPT, Gemini and Claude (weights chosen on the other 4 folds) | 0.627 | | |
 
 Balanced accuracy, mean of 5 prompt-grouped folds; the standard deviation across folds is 0.01–0.03.
 Random guessing scores 0.056.
@@ -138,6 +139,10 @@ the GLM blend's errors are within a family: on `train.csv` it splits a GPT passa
 models correctly 0.649 of the time, and if it always did, the blend would score 0.717 instead of
 0.626. `src/models/family_model.py` keeps the blend's total for the family and re-splits it with the
 specialist's opinion. GPU, `deberta-v3-base` and the open pool attached; it saves the DeBERTas.
+It did not help. No specialist alone splits its family as well as the blend (GPT 0.583 against
+0.649, Gemini 0.623 against 0.672, Claude 0.686 against 0.740). Weights picked on all of `train.csv`
+reach 0.635, but picked on 4 folds and scored on the fifth they add 0.0004: the specialists learn
+from the same pool as the blend's DeBERTas and add little they do not already know.
 
 `python -m src.predict --model tfidf_style_blend --assign` does the
 same locally.

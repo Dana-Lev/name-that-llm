@@ -20,4 +20,4 @@ date,owner,name,git_commit,cv_mean,cv_std,public_lb,notes
 2026-11-23,Dana,qwen_lora_pool,ee14196,0.5467,0.0195,0.537,LoRA Qwen 3 4B alone (probe)
 2026-11-23,Dana,pool_qwen_lora_light_blend,ee14196,0.5990,0.0198,0.579,pool_8000_tfidf=1 style_logreg=0.5 deberta_pool_long=1 deberta_pool_big=1 qwen_lora_pool=0.5 qwen4b_L9=0.5
 2026-11-24,Dana,glm_likelihood,ac9caf7,0.2271,0.0098,,GLM-5.3-Flash + GLM-5.3 likelihood features (ntl-segrun) alone; logreg C=0.1
-2026-11-24,Dana,pool_glm_blend,ac9caf7,0.6261,0.0153,,0.581 blend + 1.5 x GLM logreg on the 30% of passages with most GLM probability
+2026-11-24,Dana,pool_glm_blend,ac9caf7,0.6261,0.0153,0.606,0.581 blend + 1.5 x GLM logreg on the 30% of passages with most GLM probability

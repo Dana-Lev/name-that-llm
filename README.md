@@ -71,7 +71,7 @@ fold, saves out-of-fold probabilities to `oof/`, and appends rows to `experiment
 | Pool TF-IDF + style + both pool DeBERTas + LoRA Qwen + Qwen features | 0.609 | | 0.570 |
 | As the 0.581 blend, plus LoRA Qwen at weight 0.5 | 0.599 | | 0.579 |
 | Likelihood under GLM-5.3-Flash and GLM-5.3 only (glm-5.3 recall 0.62, glm-5.3-flash 0.59) | 0.227 | | |
-| The 0.581 blend, plus GLM likelihood on the 30% of passages it finds most GLM-like | 0.626 | | |
+| The 0.581 blend, plus GLM likelihood on the 30% of passages it finds most GLM-like | 0.626 | | 0.606 |
 
 Balanced accuracy, mean of 5 prompt-grouped folds; the standard deviation across folds is 0.01–0.03.
 Random guessing scores 0.056.
